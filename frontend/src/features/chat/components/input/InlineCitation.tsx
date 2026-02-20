@@ -48,22 +48,20 @@ export function InlineCitation({ number, source }: InlineCitationProps) {
     >
       <sup className="inline-citation interactive">[{number}]</sup>
 
-      {showTooltip && (
-        <div className={`citation-tooltip ${tooltipPosition}`}>
-          <div className="citation-tooltip-header">
-            <FileText size={14} />
-            <span className="citation-tooltip-filename">{source.filename}</span>
-          </div>
-          {source.chunk_preview && (
-            <div className="citation-tooltip-preview">
-              {source.chunk_preview}
-            </div>
-          )}
-          <div className="citation-tooltip-score">
-            Relevance: {Math.round(source.score * 100)}%
-          </div>
+      <div className={`citation-tooltip ${tooltipPosition}${showTooltip ? ' visible' : ''}`}>
+        <div className="citation-tooltip-header">
+          <FileText size={14} />
+          <span className="citation-tooltip-filename">{source.filename}</span>
         </div>
-      )}
+        {source.chunk_preview && (
+          <div className="citation-tooltip-preview">
+            {source.chunk_preview}
+          </div>
+        )}
+        <div className="citation-tooltip-score">
+          Relevance: {Math.round(source.score * 100)}%
+        </div>
+      </div>
     </span>
   );
 }
