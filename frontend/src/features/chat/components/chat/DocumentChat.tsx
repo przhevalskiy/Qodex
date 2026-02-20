@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { ArrowUp, Bot, ArrowUpRight } from 'lucide-react';
+import { ArrowUp, ArrowUpRight } from 'lucide-react';
 import { useDocumentPreviewStore } from '@/features/documents';
 import { useAuthStore } from '@/features/auth';
 import { getAvatarIcon } from '@/shared/constants/avatarIcons';
+import { remarkCitations } from '@/shared/utils/remarkCitations';
+import { exportDocumentToPDF } from '@/shared/services/pdfExport';
 import './DocumentChat.css';
 
 interface DocumentChatProps {
@@ -14,15 +16,51 @@ interface DocumentChatProps {
 
 export function DocumentChat({ documentId, documentContent: _documentContent }: DocumentChatProps) {
   const [inputValue, setInputValue] = useState('');
+  const [pdfDownloading, setPdfDownloading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const AvatarIcon = getAvatarIcon(useAuthStore((s) => s.user?.user_metadata?.avatar_icon));
+  const displayName = useAuthStore((s) => s.user?.user_metadata?.display_name) || useAuthStore((s) => s.user?.email?.split('@')[0]) || 'You';
 
   const {
     documentChatMessages,
     documentChatContent,
     isDocumentChatStreaming,
     sendDocumentChatMessage,
+    previewDocument,
+    documentContent,
   } = useDocumentPreviewStore();
+
+  const handleCitationClick = async () => {
+    if (!previewDocument || !documentContent || pdfDownloading) return;
+    setPdfDownloading(true);
+    try {
+      await exportDocumentToPDF({
+        filename: previewDocument.filename,
+        fullContent: documentContent.full_content || '',
+        chunks: documentContent.chunks || [],
+      });
+    } catch (err) {
+      console.error('Failed to download PDF:', err);
+    } finally {
+      setPdfDownloading(false);
+    }
+  };
+
+  const docChatComponents: any = {
+    citation({ number }: { number: number }) {
+      return (
+        <span className="inline-citation-wrapper">
+          <sup
+            className="inline-citation interactive"
+            onClick={handleCitationClick}
+            title="Download document as PDF"
+          >
+            [{number}]
+          </sup>
+        </span>
+      );
+    },
+  };
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -36,6 +74,11 @@ export function DocumentChat({ documentId, documentContent: _documentContent }: 
     setInputValue('');
 
     await sendDocumentChatMessage(message, 'mistral');
+  };
+
+  const handleSuggestionClick = async (question: string) => {
+    if (isDocumentChatStreaming) return;
+    await sendDocumentChatMessage(question, 'mistral');
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -52,35 +95,35 @@ export function DocumentChat({ documentId, documentContent: _documentContent }: 
               <div className="chat-welcome">
                 <div className="welcome-suggestions">
                   <button
-                    onClick={() => setInputValue("What is this document about?")}
+                    onClick={() => handleSuggestionClick("What is this document about?")}
                     className="suggestion-btn"
                   >
                     <span>What is this document about?</span>
                     <ArrowUpRight size={14} />
                   </button>
                   <button
-                    onClick={() => setInputValue("Summarize the key points")}
+                    onClick={() => handleSuggestionClick("Summarize the key points")}
                     className="suggestion-btn"
                   >
                     <span>Summarize the key points</span>
                     <ArrowUpRight size={14} />
                   </button>
                   <button
-                    onClick={() => setInputValue("What are the main findings?")}
+                    onClick={() => handleSuggestionClick("What are the main findings?")}
                     className="suggestion-btn"
                   >
                     <span>What are the main findings?</span>
                     <ArrowUpRight size={14} />
                   </button>
                   <button
-                    onClick={() => setInputValue("Explain this in simpler terms")}
+                    onClick={() => handleSuggestionClick("Explain this in simpler terms")}
                     className="suggestion-btn"
                   >
                     <span>Explain this in simpler terms</span>
                     <ArrowUpRight size={14} />
                   </button>
                   <button
-                    onClick={() => setInputValue("What questions could be asked about this?")}
+                    onClick={() => handleSuggestionClick("What questions could be asked about this?")}
                     className="suggestion-btn"
                   >
                     <span>What questions could be asked about this?</span>
@@ -95,23 +138,23 @@ export function DocumentChat({ documentId, documentContent: _documentContent }: 
                 key={message.id}
                 className={`chat-message ${message.role}`}
               >
-                <div className="message-avatar">
+                <div className={`message-avatar ${message.role}`}>
                   {message.role === 'user' ? (
                     <AvatarIcon size={16} />
                   ) : (
-                    <Bot size={16} />
+                    <img src="/qodex-logo.png" alt="Qodex" className="assistant-logo" />
                   )}
                 </div>
                 <div className="message-content">
+                  <div className="message-header">
+                    <span className="message-author">{message.role === 'user' ? displayName : 'Qodex'}</span>
+                  </div>
                   <div className={`message-text ${message.role === 'assistant' ? 'markdown-body' : ''}`}>
                     {message.role === 'assistant' ? (
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm, remarkCitations]} components={docChatComponents}>{message.content}</ReactMarkdown>
                     ) : (
                       message.content
                     )}
-                  </div>
-                  <div className="message-time">
-                    {new Date(message.timestamp).toLocaleTimeString()}
                   </div>
                 </div>
               </div>
@@ -119,12 +162,15 @@ export function DocumentChat({ documentId, documentContent: _documentContent }: 
 
             {isDocumentChatStreaming && (
               <div className="chat-message assistant streaming">
-                <div className="message-avatar">
-                  <Bot size={16} />
+                <div className="message-avatar assistant">
+                  <img src="/qodex-logo.png" alt="Qodex" className="assistant-logo" />
                 </div>
                 <div className="message-content">
+                  <div className="message-header">
+                    <span className="message-author">Qodex</span>
+                  </div>
                   <div className="message-text markdown-body streaming">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{documentChatContent}</ReactMarkdown>
+                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkCitations]} components={docChatComponents}>{documentChatContent}</ReactMarkdown>
                     <span className="streaming-cursor">|</span>
                   </div>
                 </div>
