@@ -230,9 +230,6 @@
 
 
 /* Streaming State */
-.document-chat .chat-message.streaming .message-content {
-  background-color: #f9fafb;
-}
 
 .document-chat .streaming-cursor {
   display: inline-block;
