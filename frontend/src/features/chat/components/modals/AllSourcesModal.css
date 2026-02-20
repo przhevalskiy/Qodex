@@ -1,9 +1,17 @@
 /* All Sources Modal - Split Pane Layout */
 .all-sources-modal {
   display: flex;
+  flex-direction: column;
   gap: 0;
-  height: 70vh;
-  min-height: 400px;
+  height: 100%;
+}
+
+/* Two-pane row below the shared header */
+.all-sources-panes {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
 }
 
 /* Left Pane - Document Preview */
@@ -35,6 +43,7 @@
   to { transform: rotate(360deg); }
 }
 
+
 .all-sources-empty {
   display: flex;
   align-items: center;
@@ -50,76 +59,37 @@
   height: 100%;
 }
 
-.all-sources-document-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  background-color: var(--gray-50);
-  border-bottom: 1px solid var(--gray-200);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--gray-700);
-}
-
-.all-sources-document-header svg {
-  color: var(--gray-400);
-}
-
-.all-sources-download-btn {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  background-color: transparent;
-  border: 1px solid var(--gray-300);
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--gray-600);
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.all-sources-download-btn:hover:not(:disabled) {
-  background-color: var(--gray-100);
-  border-color: var(--gray-400);
-  color: var(--gray-800);
-}
-
-.all-sources-download-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.all-sources-download-btn svg {
-  color: inherit;
-}
 
 .all-sources-document-content {
   flex: 1;
-  padding: 16px;
+  padding: 1.5rem;
   overflow-y: auto;
   background-color: var(--gray-100);
 }
 
+/* Paper card — same treatment as DocumentPreviewPane */
+.all-sources-document-content > * {
+  background-color: #ffffff;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
 /* Scrollbar for document content */
 .all-sources-document-content::-webkit-scrollbar {
-  width: 6px;
+  width: 8px;
 }
 
 .all-sources-document-content::-webkit-scrollbar-track {
-  background: var(--gray-100);
+  background: transparent;
 }
 
 .all-sources-document-content::-webkit-scrollbar-thumb {
-  background: var(--gray-300);
-  border-radius: 3px;
+  background: #d1d5db;
+  border-radius: 4px;
 }
 
 .all-sources-document-content::-webkit-scrollbar-thumb:hover {
-  background: var(--gray-400);
+  background: #9ca3af;
 }
 
 .all-sources-full-content {
