@@ -17,7 +17,6 @@ export { InputActionsDropdown } from './components/input/InputActionsDropdown';
 export { VoiceInput } from './components/ui/VoiceInput';
 export { ShareModal } from './components/modals/ShareModal';
 export { DocumentChat } from './components/chat/DocumentChat';
-export { FindMaterials } from './components/chat/FindMaterials';
 export { DocumentPreviewModal } from './components/modals/DocumentPreviewModal';
 export { DocumentPreviewPane } from './components/sources/DocumentPreviewPane';
 export { FormattedContent } from './components/sources/FormattedContent';
