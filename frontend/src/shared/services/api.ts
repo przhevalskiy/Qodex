@@ -172,6 +172,16 @@ class ApiService {
     return this.request(`/api/documents/${id}/chunks`);
   }
 
+  async formatDocumentPreview(
+    documentId: string,
+    chunks: { id: string; content: string }[]
+  ): Promise<{ formatted: { id: string; content: string }[] }> {
+    return this.request(`/api/documents/${documentId}/format-preview`, {
+      method: 'POST',
+      body: JSON.stringify({ chunks }),
+    });
+  }
+
   async chatWithDocument(id: string, message: string, provider: string): Promise<Response> {
     const authHeaders = await getAuthHeaders();
     const response = await fetch(`${this.baseUrl}/api/documents/${id}/chat`, {
