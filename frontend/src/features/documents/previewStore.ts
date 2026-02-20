@@ -8,6 +8,7 @@ interface DocumentPreviewState {
   documentChunks: any[];
   highlightedChunk: string | null;
   isLoading: boolean;
+  isFormatting: boolean;
   error: string | null;
   isDocumentChatStreaming: boolean;
   documentChatMessages: any[];
@@ -20,6 +21,7 @@ interface DocumentPreviewActions {
   highlightChunk: (chunkId: string) => void;
   clearHighlight: () => void;
   clearError: () => void;
+  setFormatting: (value: boolean) => void;
   sendDocumentChatMessage: (message: string, provider: string) => Promise<void>;
   clearDocumentChat: () => void;
 }
@@ -33,6 +35,7 @@ export const useDocumentPreviewStore = create<DocumentPreviewStore>((set, get) =
   documentChunks: [],
   highlightedChunk: null,
   isLoading: false,
+  isFormatting: false,
   error: null,
   isDocumentChatStreaming: false,
   documentChatMessages: [],
@@ -40,11 +43,13 @@ export const useDocumentPreviewStore = create<DocumentPreviewStore>((set, get) =
 
   // Actions
   openDocumentPreview: async (documentId: string, chunkId?: string) => {
-    set({ isLoading: true, error: null });
+    set({ isLoading: true, error: null, documentChatMessages: [], documentChatContent: '' });
 
     try {
-      // Get document metadata
+      // Get document metadata first — sets previewDocument so modal mounts
+      // while content/chunks are still loading (isLoading remains true)
       const document = await api.getDocument(documentId);
+      set({ previewDocument: document });
 
       // Get document content and chunks in parallel
       const [content, chunks] = await Promise.all([
@@ -53,13 +58,13 @@ export const useDocumentPreviewStore = create<DocumentPreviewStore>((set, get) =
       ]);
 
       set({
-        previewDocument: document,
         documentContent: content,
         documentChunks: chunks.chunks,
         isLoading: false,
+        // Pre-set isFormatting so header/right-pane skeleton stays until
+        // DocumentPreviewPane finishes the AI formatting step
+        isFormatting: chunks.chunks.length > 0,
         highlightedChunk: chunkId || null,
-        documentChatMessages: [],
-        documentChatContent: ''
       });
     } catch (error) {
       set({
@@ -75,6 +80,7 @@ export const useDocumentPreviewStore = create<DocumentPreviewStore>((set, get) =
       documentContent: null,
       documentChunks: [],
       highlightedChunk: null,
+      isFormatting: false,
       error: null,
       documentChatMessages: [],
       documentChatContent: ''
@@ -91,6 +97,10 @@ export const useDocumentPreviewStore = create<DocumentPreviewStore>((set, get) =
 
   clearError: () => {
     set({ error: null });
+  },
+
+  setFormatting: (value: boolean) => {
+    set({ isFormatting: value });
   },
 
   sendDocumentChatMessage: async (message: string, provider: string) => {

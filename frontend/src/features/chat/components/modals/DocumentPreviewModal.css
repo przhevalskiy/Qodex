@@ -166,6 +166,27 @@
   cursor: not-allowed;
 }
 
+/* Header controls skeleton */
+@keyframes headerSkeletonShimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.document-controls-skeleton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.document-control-skeleton {
+  height: 28px;
+  border-radius: 0.375rem;
+  background: linear-gradient(90deg, var(--gray-200) 25%, var(--gray-100) 50%, var(--gray-200) 75%);
+  background-size: 200% 100%;
+  animation: headerSkeletonShimmer 1.4s ease-in-out infinite;
+}
+
 /* Two-Pane Layout */
 .document-preview-content {
   display: flex;

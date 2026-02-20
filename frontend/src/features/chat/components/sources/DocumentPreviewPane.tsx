@@ -3,6 +3,7 @@ import { FileText } from 'lucide-react';
 import { FormattedContent } from './FormattedContent';
 import { ChunkSkeleton } from './ChunkSkeleton';
 import { api } from '@/shared/services/api';
+import { useDocumentPreviewStore } from '@/features/documents';
 import './DocumentPreviewPane.css';
 
 interface DocumentPreviewPaneProps {
@@ -19,7 +20,7 @@ export function DocumentPreviewPane({
   zoomLevel = 100,
 }: DocumentPreviewPaneProps) {
   const [formattedMap, setFormattedMap] = useState<Map<string, string>>(new Map());
-  const [formatting, setFormatting] = useState(false);
+  const { isFormatting, isLoading, setFormatting } = useDocumentPreviewStore();
   const contentRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to highlighted chunk when it changes
@@ -46,7 +47,6 @@ export function DocumentPreviewPane({
     if (!documentId || chunks.length === 0 || formattedMap.size > 0) return;
 
     const rawChunks = chunks.map((c: any) => ({ id: c.id, content: c.content }));
-    setFormatting(true);
 
     api.formatDocumentPreview(documentId, rawChunks)
       .then(({ formatted }) => {
@@ -62,11 +62,15 @@ export function DocumentPreviewPane({
   if (!documentContent) {
     return (
       <div className="document-preview-pane">
-        <div className="document-preview-empty">
-          <FileText size={48} className="empty-icon" />
-          <h3>No Document Available</h3>
-          <p>Document content could not be loaded</p>
-        </div>
+        {isLoading || isFormatting ? (
+          <ChunkSkeleton count={6} />
+        ) : (
+          <div className="document-preview-empty">
+            <FileText size={48} className="empty-icon" />
+            <h3>No Document Available</h3>
+            <p>Document content could not be loaded</p>
+          </div>
+        )}
       </div>
     );
   }
@@ -78,7 +82,7 @@ export function DocumentPreviewPane({
       <div className="document-content" ref={contentRef}>
         {chunks.length > 0 ? (
           <>
-            {formatting ? (
+            {isFormatting ? (
               <ChunkSkeleton count={Math.min(chunks.length, 6)} />
             ) : (
               <FormattedContent

@@ -13,10 +13,13 @@ export function DocumentPreviewModal() {
     documentContent,
     highlightedChunk,
     isLoading,
+    isFormatting,
     error,
     closeDocumentPreview,
     clearError
   } = useDocumentPreviewStore();
+
+  const isBusy = isLoading || isFormatting;
 
   const [zoomLevel, setZoomLevel] = useState(100);
   const [copied, setCopied] = useState(false);
@@ -71,60 +74,58 @@ export function DocumentPreviewModal() {
           </div>
         )}
 
-        {isLoading ? (
-          <div className="document-preview-loading">
-            <div className="loading-spinner" />
-            <span>Loading document...</span>
+        <div className="document-shared-header">
+          <div className="document-title-wrapper">
+            <FileText size={18} className="document-icon" />
+            <h3 className="document-title">{previewDocument.filename}</h3>
           </div>
-        ) : (
-          <>
-            {/* Shared header spanning both panes */}
-            <div className="document-shared-header">
-              <div className="document-title-wrapper">
-                <FileText size={18} className="document-icon" />
-                <h3 className="document-title">{previewDocument.filename}</h3>
-              </div>
-              <div className="document-controls">
-                <div className="zoom-controls">
-                  <button onClick={handleZoomOut} className="zoom-btn" title="Zoom out">
-                    <ZoomOut size={16} />
-                  </button>
-                  <span className="zoom-level">{zoomLevel}%</span>
-                  <button onClick={handleZoomIn} className="zoom-btn" title="Zoom in">
-                    <ZoomIn size={16} />
-                  </button>
-                </div>
-                <button onClick={handleCopyAll} className="copy-all-btn" title="Copy all content">
-                  {copied ? <Check size={16} /> : <Copy size={16} />}
-                  {copied ? 'Copied' : 'Copy'}
+          {isBusy ? (
+            <div className="document-controls-skeleton">
+              <div className="document-control-skeleton" style={{ width: '80px' }} />
+              <div className="document-control-skeleton" style={{ width: '60px' }} />
+              <div className="document-control-skeleton" style={{ width: '52px' }} />
+            </div>
+          ) : (
+            <div className="document-controls">
+              <div className="zoom-controls">
+                <button onClick={handleZoomOut} className="zoom-btn" title="Zoom out">
+                  <ZoomOut size={16} />
                 </button>
-                <button onClick={handleDownloadPDF} className="copy-all-btn" disabled={downloading} title="Download as PDF">
-                  <Download size={16} />
-                  {downloading ? 'Downloading...' : 'PDF'}
+                <span className="zoom-level">{zoomLevel}%</span>
+                <button onClick={handleZoomIn} className="zoom-btn" title="Zoom in">
+                  <ZoomIn size={16} />
                 </button>
               </div>
+              <button onClick={handleCopyAll} className="copy-all-btn" title="Copy all content">
+                {copied ? <Check size={16} /> : <Copy size={16} />}
+                {copied ? 'Copied' : 'Copy'}
+              </button>
+              <button onClick={handleDownloadPDF} className="copy-all-btn" disabled={downloading} title="Download as PDF">
+                <Download size={16} />
+                {downloading ? 'Downloading...' : 'PDF'}
+              </button>
             </div>
+          )}
+        </div>
 
-            <div className="document-preview-content">
-              <div className="document-preview-left">
-                <DocumentPreviewPane
-                  documentContent={documentContent}
-                  highlightedChunk={highlightedChunk}
-                  zoomLevel={zoomLevel}
-                />
-              </div>
+        <div className="document-preview-content">
+          <div className="document-preview-left">
+            <DocumentPreviewPane
+              documentContent={documentContent}
+              highlightedChunk={highlightedChunk}
+              zoomLevel={zoomLevel}
+            />
+          </div>
 
-              <div className="pane-divider" />
+          <div className="pane-divider" />
 
-              <div className="document-chat-right">
-                <DocumentChat
-                  documentId={previewDocument.id}
-                  documentContent={fullContent}
-                />
-              </div>
-            </div>
-          </>
-        )}
+          <div className="document-chat-right">
+            <DocumentChat
+              documentId={previewDocument.id}
+              documentContent={fullContent}
+            />
+          </div>
+        </div>
       </div>
     </Modal>
   );
