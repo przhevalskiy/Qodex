@@ -94,7 +94,7 @@ export function AttachmentPanel({ discussionId, isOpen, onClose }: AttachmentPan
         </div>
 
         <p className="attachment-panel-desc">
-          Attached files provide context for this conversation. They are not indexed into the knowledge base.
+          Attached files provide context for this conversation.
         </p>
 
         {attachments.length > 0 && (
