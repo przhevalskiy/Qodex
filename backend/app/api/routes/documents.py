@@ -3,11 +3,15 @@ from typing import List, Optional
 from pydantic import BaseModel
 from datetime import datetime
 import json
+import asyncio
 
 from app.models import Document
 from app.services.document_service import get_document_service
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
+
+# In-memory cache: document_id → list of {id, content} formatted chunks
+_format_cache: dict[str, list[dict]] = {}
 
 # Allowed file types
 ALLOWED_CONTENT_TYPES = {
@@ -179,6 +183,80 @@ async def bootstrap_registry():
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Bootstrap failed: {str(e)}")
+
+
+class FormatChunk(BaseModel):
+    id: str
+    content: str
+
+
+class FormatPreviewRequest(BaseModel):
+    chunks: List[FormatChunk]
+
+
+FORMAT_SYSTEM_PROMPT = (
+    "You are a document text reconstructor. The text below is a chunk extracted from a PDF "
+    "or document file. PDF extraction often produces fragmented words, broken sentences, "
+    "missing spaces, and garbled formatting.\n\n"
+    "Your job: rewrite this chunk as clean, structured markdown. Rules:\n"
+    "- Preserve ALL original information — do not add, summarize, or omit anything\n"
+    "- Fix broken words, run-together sentences, and spacing issues\n"
+    "- Identify section titles (e.g. 'COURSE DESCRIPTION', 'GRADING', 'SCHEDULE') and render them as ## headings\n"
+    "- Identify subsection titles and render them as ### headings\n"
+    "- If a heading is written in ALL CAPS, convert it to Title Case (e.g. 'PROFESSOR NAMES' → 'Professor Names')\n"
+    "- Never output headings in ALL CAPS — always use standard Title Case\n"
+    "- Render lists (dates, items, bullet points) as proper markdown `- item` lists\n"
+    "- Use paragraph breaks where logical section shifts occur\n"
+    "- Return only the reconstructed markdown — no commentary, no labels, no code fences"
+)
+
+
+async def _format_one_chunk(client, chunk: FormatChunk) -> dict:
+    try:
+        response = await client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": FORMAT_SYSTEM_PROMPT},
+                {"role": "user", "content": chunk.content},
+            ],
+            temperature=0.1,
+            max_tokens=1500,
+        )
+        return {"id": chunk.id, "content": response.choices[0].message.content.strip()}
+    except Exception:
+        # On failure return original content unchanged
+        return {"id": chunk.id, "content": chunk.content}
+
+
+@router.post("/{document_id}/format-preview")
+async def format_document_preview(document_id: str, request: FormatPreviewRequest):
+    """Use AI to reconstruct chunk text into clean readable prose for document preview."""
+    # Return cached result immediately if available
+    if document_id in _format_cache:
+        return {"formatted": _format_cache[document_id]}
+
+    from openai import AsyncOpenAI
+    from app.core.config import get_settings
+
+    settings = get_settings()
+    if not settings.openai_api_key:
+        # No key — return chunks as-is so the UI still works
+        return {"formatted": [{"id": c.id, "content": c.content} for c in request.chunks]}
+
+    client = AsyncOpenAI(api_key=settings.openai_api_key)
+
+    # Process all chunks in parallel (up to 20 at a time to avoid rate limits)
+    sem = asyncio.Semaphore(20)
+
+    async def bounded(chunk):
+        async with sem:
+            return await _format_one_chunk(client, chunk)
+
+    results = await asyncio.gather(*[bounded(c) for c in request.chunks])
+
+    # Cache result so subsequent opens of the same document are instant
+    _format_cache[document_id] = results
+    return {"formatted": results}
 
 
 class DocumentChatRequest(BaseModel):
