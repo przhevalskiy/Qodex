@@ -1,11 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Send, MessageSquare, Bot, ArrowUpRight, BookOpen } from 'lucide-react';
+import { ArrowUp, Bot, ArrowUpRight } from 'lucide-react';
 import { useDocumentPreviewStore } from '@/features/documents';
 import { useAuthStore } from '@/features/auth';
 import { getAvatarIcon } from '@/shared/constants/avatarIcons';
-import { FindMaterials } from './FindMaterials';
 import './DocumentChat.css';
 
 interface DocumentChatProps {
@@ -13,9 +12,8 @@ interface DocumentChatProps {
   documentContent: string;
 }
 
-export function DocumentChat({ documentId, documentContent }: DocumentChatProps) {
+export function DocumentChat({ documentId, documentContent: _documentContent }: DocumentChatProps) {
   const [inputValue, setInputValue] = useState('');
-  const [activeTab, setActiveTab] = useState<'chat' | 'materials'>('chat');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const AvatarIcon = getAvatarIcon(useAuthStore((s) => s.user?.user_metadata?.avatar_icon));
 
@@ -49,30 +47,7 @@ export function DocumentChat({ documentId, documentContent }: DocumentChatProps)
 
   return (
     <div className="document-chat">
-      <div className="document-chat-header">
-        <div className="dive-tab-toggle">
-          <button
-            className={`dive-tab ${activeTab === 'chat' ? 'active' : ''}`}
-            onClick={() => setActiveTab('chat')}
-          >
-            <MessageSquare size={14} />
-            Chat
-          </button>
-          <button
-            className={`dive-tab ${activeTab === 'materials' ? 'active' : ''}`}
-            onClick={() => setActiveTab('materials')}
-          >
-            <BookOpen size={14} />
-            Find Materials
-          </button>
-        </div>
-      </div>
-
-      {activeTab === 'materials' ? (
-        <FindMaterials documentContent={documentContent} />
-      ) : (
-        <>
-          <div className="document-chat-messages">
+      <div className="document-chat-messages">
             {documentChatMessages.length === 0 && !isDocumentChatStreaming && (
               <div className="chat-welcome">
                 <div className="welcome-suggestions">
@@ -157,31 +132,29 @@ export function DocumentChat({ documentId, documentContent }: DocumentChatProps)
             )}
 
             <div ref={messagesEndRef} />
-          </div>
+      </div>
 
-          <div className="document-chat-input">
-            <div className="input-container">
-              <textarea
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Ask a question about this document..."
-                className="chat-input"
-                rows={1}
-                disabled={isDocumentChatStreaming}
-              />
-              <button
-                onClick={handleSend}
-                disabled={!inputValue.trim() || isDocumentChatStreaming}
-                className="send-button"
-                title="Send message"
-              >
-                <Send size={16} />
-              </button>
-            </div>
-          </div>
-        </>
-      )}
+      <div className="document-chat-input">
+        <div className="input-container">
+          <textarea
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Ask a question about this document..."
+            className="chat-input"
+            rows={1}
+            disabled={isDocumentChatStreaming}
+          />
+          <button
+            onClick={handleSend}
+            disabled={!inputValue.trim() || isDocumentChatStreaming}
+            className="send-button"
+            title="Send message"
+          >
+            <ArrowUp size={16} />
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
