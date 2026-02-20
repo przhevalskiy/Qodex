@@ -1,0 +1,44 @@
+.chunk-skeleton-wrapper {
+  padding: 2.5rem 3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+.chunk-skeleton-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding-bottom: 1.75rem;
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.chunk-skeleton-block:last-child {
+  border-bottom: none;
+}
+
+.chunk-skeleton-line {
+  height: 0.85rem;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--gray-200) 25%,
+    var(--gray-100) 50%,
+    var(--gray-200) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@media (max-width: 1024px) {
+  .chunk-skeleton-wrapper { padding: 1.5rem 2rem; }
+}
+
+@media (max-width: 768px) {
+  .chunk-skeleton-wrapper { padding: 1.25rem 1.5rem; }
+}
