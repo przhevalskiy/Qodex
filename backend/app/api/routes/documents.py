@@ -264,7 +264,7 @@ class DocumentChatRequest(BaseModel):
     message: str
     provider: str
     temperature: float = 0.7
-    max_tokens: int = 4096
+    max_tokens: int = 512
 
 
 @router.post("/{document_id}/chat")
@@ -322,13 +322,19 @@ async def chat_with_document(document_id: str, request: DocumentChatRequest):
         # Format context with document content
         context = f"Document: {document_content['filename']}\n\n{document_content['full_content']}"
         
+        brevity_prompt = (
+            "\n\nIMPORTANT: Give a concise, direct answer in 2-4 sentences maximum. "
+            "No lengthy explanations or excessive detail — just answer the question clearly and stop."
+        )
+
         # Stream response
         async def generate_response():
             async for chunk in provider.stream_completion(
                 messages=[user_message],
                 context=context,
                 temperature=request.temperature,
-                max_tokens=request.max_tokens
+                max_tokens=request.max_tokens,
+                intent_prompt=brevity_prompt
             ):
                 yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
             
