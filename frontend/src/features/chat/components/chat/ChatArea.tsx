@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useChatStore } from '../../store';
 import { useDiscussionStore } from '@/features/discussions';
 import { useProviderStore } from '@/features/providers';
+import { useAuthStore } from '@/features/auth';
 import { useSSE } from '@/shared/hooks/useSSE';
 import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
@@ -267,8 +268,15 @@ function QuickActions({ onSelectAction }: QuickActionsProps) {
 }
 
 function EmptyState() {
+  const user = useAuthStore((s) => s.user);
+  const displayName = user?.user_metadata?.display_name || user?.email?.split('@')[0] || '';
+  const firstName = displayName.split(' ')[0];
+
   return (
     <div className="empty-state">
+      {firstName && (
+        <p className="empty-state-greeting">Hi {firstName},</p>
+      )}
       <h1 className="empty-state-title">
         <RotatingText
           texts={[
@@ -281,9 +289,7 @@ function EmptyState() {
           interval={4500}
         />
       </h1>
-      <p className="empty-state-subtitle">
-        Select an AI provider and ask me anything. I can help gather insights from syllabi and spark new ideas.
-      </p>
+
     </div>
   );
 }
