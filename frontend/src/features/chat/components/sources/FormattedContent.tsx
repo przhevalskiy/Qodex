@@ -1,3 +1,5 @@
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import './FormattedContent.css';
 
 interface ContentBlock {
@@ -9,7 +11,8 @@ interface ContentBlock {
 
 interface FormattedContentProps {
   chunks: ContentBlock[];
-  searchTerm?: string;
+  /** AI-formatted markdown text keyed by chunk id. Falls back to raw content when absent. */
+  formattedMap?: Map<string, string>;
   zoomLevel?: number;
   onChunkClick?: (chunkId: string) => void;
   highlightedChunk?: string | null;
@@ -17,7 +20,7 @@ interface FormattedContentProps {
 
 export function FormattedContent({
   chunks,
-  searchTerm = '',
+  formattedMap,
   zoomLevel = 100,
   onChunkClick,
   highlightedChunk
@@ -29,6 +32,7 @@ export function FormattedContent({
     >
       {chunks.map((chunk) => {
         const isHighlighted = highlightedChunk === chunk.id;
+        const displayContent = formattedMap?.get(chunk.id) ?? chunk.content;
 
         return (
           <div
@@ -37,38 +41,14 @@ export function FormattedContent({
             onClick={() => onChunkClick?.(chunk.id)}
             data-chunk-id={chunk.id}
           >
-            {chunk.content_type === 'heading' ? (
-              <h3 className="content-heading">
-                {renderWithSearch(chunk.content, searchTerm, chunk.id)}
-              </h3>
-            ) : chunk.content_type === 'list' ? (
-              <pre className="content-list-block">
-                {renderWithSearch(chunk.content, searchTerm, chunk.id)}
-              </pre>
-            ) : (
-              <p className="content-paragraph">
-                {renderWithSearch(chunk.content, searchTerm, chunk.id)}
-              </p>
-            )}
+            <div className="content-markdown">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {displayContent}
+              </ReactMarkdown>
+            </div>
           </div>
         );
       })}
     </div>
-  );
-}
-
-function renderWithSearch(text: string, searchTerm: string, keyPrefix: string): React.ReactNode {
-  if (!searchTerm) return text;
-
-  const escaped = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const regex = new RegExp(`(${escaped})`, 'gi');
-  const parts = text.split(regex);
-
-  return parts.map((part, i) =>
-    regex.test(part) ? (
-      <mark key={`${keyPrefix}-hl-${i}`} className="search-highlight">{part}</mark>
-    ) : (
-      part
-    )
   );
 }
