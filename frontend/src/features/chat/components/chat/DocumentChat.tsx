@@ -28,7 +28,11 @@ export function DocumentChat({ documentId, documentContent: _documentContent }: 
     sendDocumentChatMessage,
     previewDocument,
     documentContent,
+    isLoading,
+    isFormatting,
   } = useDocumentPreviewStore();
+
+  const isBusy = isLoading || isFormatting;
 
   const handleCitationClick = async () => {
     if (!previewDocument || !documentContent || pdfDownloading) return;
@@ -93,43 +97,36 @@ export function DocumentChat({ documentId, documentContent: _documentContent }: 
       <div className="document-chat-messages">
             {documentChatMessages.length === 0 && !isDocumentChatStreaming && (
               <div className="chat-welcome">
-                <div className="welcome-suggestions">
-                  <button
-                    onClick={() => handleSuggestionClick("What is this document about?")}
-                    className="suggestion-btn"
-                  >
-                    <span>What is this document about?</span>
-                    <ArrowUpRight size={14} />
-                  </button>
-                  <button
-                    onClick={() => handleSuggestionClick("Summarize the key points")}
-                    className="suggestion-btn"
-                  >
-                    <span>Summarize the key points</span>
-                    <ArrowUpRight size={14} />
-                  </button>
-                  <button
-                    onClick={() => handleSuggestionClick("What are the main findings?")}
-                    className="suggestion-btn"
-                  >
-                    <span>What are the main findings?</span>
-                    <ArrowUpRight size={14} />
-                  </button>
-                  <button
-                    onClick={() => handleSuggestionClick("Explain this in simpler terms")}
-                    className="suggestion-btn"
-                  >
-                    <span>Explain this in simpler terms</span>
-                    <ArrowUpRight size={14} />
-                  </button>
-                  <button
-                    onClick={() => handleSuggestionClick("What questions could be asked about this?")}
-                    className="suggestion-btn"
-                  >
-                    <span>What questions could be asked about this?</span>
-                    <ArrowUpRight size={14} />
-                  </button>
-                </div>
+                {isBusy ? (
+                  <div className="welcome-suggestions">
+                    {[...Array(5)].map((_, i) => (
+                      <div key={i} className="suggestion-btn-skeleton" />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="welcome-suggestions">
+                    <button onClick={() => handleSuggestionClick("What is this document about?")} className="suggestion-btn">
+                      <span>What is this document about?</span>
+                      <ArrowUpRight size={14} />
+                    </button>
+                    <button onClick={() => handleSuggestionClick("Summarize the key points")} className="suggestion-btn">
+                      <span>Summarize the key points</span>
+                      <ArrowUpRight size={14} />
+                    </button>
+                    <button onClick={() => handleSuggestionClick("What are the main findings?")} className="suggestion-btn">
+                      <span>What are the main findings?</span>
+                      <ArrowUpRight size={14} />
+                    </button>
+                    <button onClick={() => handleSuggestionClick("Explain this in simpler terms")} className="suggestion-btn">
+                      <span>Explain this in simpler terms</span>
+                      <ArrowUpRight size={14} />
+                    </button>
+                    <button onClick={() => handleSuggestionClick("What questions could be asked about this?")} className="suggestion-btn">
+                      <span>What questions could be asked about this?</span>
+                      <ArrowUpRight size={14} />
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -181,25 +178,29 @@ export function DocumentChat({ documentId, documentContent: _documentContent }: 
       </div>
 
       <div className="document-chat-input">
-        <div className="input-container">
-          <textarea
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Ask a question about this document..."
-            className="chat-input"
-            rows={1}
-            disabled={isDocumentChatStreaming}
-          />
-          <button
-            onClick={handleSend}
-            disabled={!inputValue.trim() || isDocumentChatStreaming}
-            className="send-button"
-            title="Send message"
-          >
-            <ArrowUp size={16} />
-          </button>
-        </div>
+        {isBusy ? (
+          <div className="chat-input-skeleton" />
+        ) : (
+          <div className="input-container">
+            <textarea
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Ask a question about this document..."
+              className="chat-input"
+              rows={1}
+              disabled={isDocumentChatStreaming}
+            />
+            <button
+              onClick={handleSend}
+              disabled={!inputValue.trim() || isDocumentChatStreaming}
+              className="send-button"
+              title="Send message"
+            >
+              <ArrowUp size={16} />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

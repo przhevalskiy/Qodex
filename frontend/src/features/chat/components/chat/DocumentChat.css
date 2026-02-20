@@ -162,6 +162,28 @@
   transform: scale(0.98);
 }
 
+/* Skeleton shimmer */
+@keyframes docChatSkeletonShimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.document-chat .suggestion-btn-skeleton {
+  height: 40px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--gray-200) 25%, var(--gray-100) 50%, var(--gray-200) 75%);
+  background-size: 200% 100%;
+  animation: docChatSkeletonShimmer 1.4s ease-in-out infinite;
+}
+
+.document-chat .chat-input-skeleton {
+  height: 52px;
+  border-radius: 2rem;
+  background: linear-gradient(90deg, var(--gray-200) 25%, var(--gray-100) 50%, var(--gray-200) 75%);
+  background-size: 200% 100%;
+  animation: docChatSkeletonShimmer 1.4s ease-in-out infinite;
+}
+
 /* Chat Messages */
 .document-chat .chat-message {
   display: flex;
