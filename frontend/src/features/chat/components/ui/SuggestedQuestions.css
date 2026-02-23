@@ -59,6 +59,7 @@
   border-color: var(--brand-300);
   color: var(--brand-700);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
 }
 
 .suggested-question-btn:hover:not(:disabled) .suggested-question-arrow {
