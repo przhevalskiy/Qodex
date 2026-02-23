@@ -25,6 +25,40 @@ interface DocumentExportOptions {
 }
 
 /**
+ * Load the Qodex logo as a base64 data URL.
+ */
+async function loadLogoBase64(): Promise<string | null> {
+  try {
+    const response = await fetch('/qodex-logo.png');
+    if (!response.ok) return null;
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Add Qodex logo centered at the top of every page.
+ * Logo is ~square (2000x2032), rendered as 14×14mm.
+ */
+function addLogoToPages(pdf: jsPDF, logoBase64: string, pageWidth: number, totalPages: number): void {
+  const logoSize = 14; // mm (square logo)
+  const logoX = (pageWidth - logoSize) / 2;
+  const logoY = 4;
+
+  for (let i = 1; i <= totalPages; i++) {
+    pdf.setPage(i);
+    pdf.addImage(logoBase64, 'PNG', logoX, logoY, logoSize, logoSize);
+  }
+}
+
+/**
  * Clean markdown text for PDF rendering.
  * Strips markdown syntax while preserving readable text.
  */
@@ -48,6 +82,115 @@ function getIndentLevel(line: string): number {
   if (!match) return 0;
   const spaces = match[1].length;
   return Math.floor(spaces / 2);
+}
+
+/**
+ * Draw a bullet dot at the given position using PDF graphics (avoids Unicode encoding issues).
+ * Level 0: filled circle; level 1+: outlined circle, slightly smaller.
+ */
+function drawBulletDot(pdf: jsPDF, x: number, y: number, level: number): void {
+  const dotY = y - 1.3;
+  pdf.setFillColor(0, 0, 0);
+  pdf.setDrawColor(0, 0, 0);
+  if (level === 0) {
+    pdf.circle(x, dotY, 1.1, 'F');
+  } else if (level === 1) {
+    pdf.circle(x, dotY, 0.9, 'DF');
+  } else {
+    // Tiny filled square for deeper levels
+    pdf.rect(x - 0.8, dotY - 0.8, 1.6, 1.6, 'F');
+  }
+}
+
+/**
+ * Render a markdown table to the PDF.
+ * tableLines: array of raw pipe-delimited lines.
+ * Returns new yPosition after the table.
+ */
+function renderTable(
+  pdf: jsPDF,
+  tableLines: string[],
+  margin: number,
+  contentWidth: number,
+  yPosition: number,
+  pageHeight: number
+): number {
+  // Parse rows, skip separator rows (cells all dashes/colons)
+  const rows = tableLines
+    .map(line => line.split('|').slice(1, -1).map(cell => cell.trim()))
+    .filter(cells => cells.length > 0 && !cells.every(cell => /^[-: ]+$/.test(cell)));
+
+  if (rows.length === 0) return yPosition;
+
+  const colCount = Math.max(...rows.map(r => r.length));
+  const colWidth = contentWidth / colCount;
+  const cellPadH = 2;  // horizontal padding mm
+  const cellPadV = 1.5; // vertical padding mm
+  const lineHeight = 4.5;
+  const fontSize = 9;
+
+  pdf.setFontSize(fontSize);
+
+  for (let rowIdx = 0; rowIdx < rows.length; rowIdx++) {
+    const isHeader = rowIdx === 0;
+    const row = rows[rowIdx];
+
+    // Calculate row height based on max wrapped lines in any cell
+    let maxLines = 1;
+    pdf.setFont('helvetica', isHeader ? 'bold' : 'normal');
+    pdf.setFontSize(fontSize);
+    for (let colIdx = 0; colIdx < colCount; colIdx++) {
+      const cellText = row[colIdx] || '';
+      const wrapped = pdf.splitTextToSize(cleanMarkdownText(cellText), colWidth - cellPadH * 2);
+      maxLines = Math.max(maxLines, wrapped.length);
+    }
+    const rowHeight = maxLines * lineHeight + cellPadV * 2;
+
+    // Page break check
+    if (yPosition + rowHeight > pageHeight - margin - 15) {
+      pdf.addPage();
+      yPosition = margin;
+    }
+
+    // Header background
+    if (isHeader) {
+      pdf.setFillColor(235, 242, 255);
+      pdf.rect(margin, yPosition, contentWidth, rowHeight, 'F');
+    } else if (rowIdx % 2 === 0) {
+      pdf.setFillColor(250, 251, 255);
+      pdf.rect(margin, yPosition, contentWidth, rowHeight, 'F');
+    }
+
+    // Draw cells
+    pdf.setDrawColor(180, 200, 230);
+    for (let colIdx = 0; colIdx < colCount; colIdx++) {
+      const cellX = margin + colIdx * colWidth;
+      const cellText = row[colIdx] || '';
+
+      // Cell border
+      pdf.rect(cellX, yPosition, colWidth, rowHeight);
+
+      // Cell text
+      pdf.setFont('helvetica', isHeader ? 'bold' : 'normal');
+      pdf.setFontSize(fontSize);
+      pdf.setTextColor(0, 0, 0);
+
+      const wrapped = pdf.splitTextToSize(cleanMarkdownText(cellText), colWidth - cellPadH * 2);
+      for (let lineIdx = 0; lineIdx < wrapped.length; lineIdx++) {
+        pdf.text(
+          wrapped[lineIdx],
+          cellX + cellPadH,
+          yPosition + cellPadV + lineHeight * (lineIdx + 0.8)
+        );
+      }
+    }
+
+    yPosition += rowHeight;
+  }
+
+  // Reset draw color after table
+  pdf.setDrawColor(200, 200, 200);
+  return yPosition + 4;
 }
 
 /**
@@ -123,6 +266,19 @@ function renderContentToPDF(
       continue;
     }
 
+    // Handle markdown tables (lookahead to collect all rows)
+    if (trimmedLine.startsWith('|') && trimmedLine.endsWith('|')) {
+      const tableLines = [line];
+      let j = i + 1;
+      while (j < lines.length && lines[j].trim().startsWith('|')) {
+        tableLines.push(lines[j]);
+        j++;
+      }
+      i = j - 1; // Skip to last consumed row (loop will increment)
+      yPosition = renderTable(pdf, tableLines, margin, contentWidth, yPosition, pageHeight);
+      continue;
+    }
+
     // Handle horizontal rules
     if (/^[-*_]{3,}$/.test(trimmedLine)) {
       checkPageBreak(8);
@@ -136,7 +292,7 @@ function renderContentToPDF(
     // Handle H4 headers
     if (trimmedLine.startsWith('#### ')) {
       checkPageBreak(10);
-      yPosition += 4; // Add space before header
+      yPosition += 4;
       pdf.setFont('helvetica', 'bold');
       pdf.setFontSize(11);
       const headerText = cleanMarkdownText(trimmedLine.replace(/^####\s*/, ''));
@@ -145,7 +301,7 @@ function renderContentToPDF(
         pdf.text(wrappedHeader, margin, yPosition);
         yPosition += 5;
       }
-      yPosition += 2; // Add space after header
+      yPosition += 2;
       pdf.setFont('helvetica', 'normal');
       continue;
     }
@@ -204,27 +360,28 @@ function renderContentToPDF(
       continue;
     }
 
-    // Handle list items (with nesting support)
-    const bulletMatch = line.match(/^(\s*)([-*])\s+(.*)$/);
-    const numberedMatch = line.match(/^(\s*)(\d+)\.\s+(.*)$/);
+    // Handle unordered list items — includes •, ●, ○ as well as - and *
+    // These Unicode bullet chars can't be rendered by jsPDF standard fonts, so we catch them here
+    // and draw the bullet dot programmatically.
+    const bulletMatch = line.match(/^(\s*)([-*\u2022\u25CF\u25E6\u25AA\u2013])\s+(.*)$/) ||
+                        line.match(/^(\s*)(•|●|○|–)\s+(.*)$/);
 
     if (bulletMatch) {
       const indentLevel = getIndentLevel(line);
       const indent = indentLevel * 5;
-      const itemText = cleanMarkdownText(bulletMatch[3]);
+      const itemText = cleanMarkdownText(bulletMatch[3] || bulletMatch[bulletMatch.length - 1]);
 
       checkPageBreak(6);
       pdf.setFont('helvetica', 'normal');
       pdf.setFontSize(11);
       pdf.setTextColor(0, 0, 0);
 
-      const bulletChar = indentLevel === 0 ? '•' : indentLevel === 1 ? '◦' : '‣';
       const wrappedLines = pdf.splitTextToSize(itemText, contentWidth - indent - 8);
 
       for (let j = 0; j < wrappedLines.length; j++) {
         checkPageBreak(5);
         if (j === 0) {
-          pdf.text(bulletChar, margin + indent, yPosition);
+          drawBulletDot(pdf, margin + indent + 1.5, yPosition, indentLevel);
           pdf.text(wrappedLines[j], margin + indent + 5, yPosition);
         } else {
           pdf.text(wrappedLines[j], margin + indent + 5, yPosition);
@@ -233,6 +390,9 @@ function renderContentToPDF(
       }
       continue;
     }
+
+    // Handle numbered list items
+    const numberedMatch = line.match(/^(\s*)(\d+)\.\s+(.*)$/);
 
     if (numberedMatch) {
       const indentLevel = getIndentLevel(line);
@@ -312,6 +472,8 @@ export async function exportMessageToPDF({
   timestamp,
   title = 'Qodex Response',
 }: ExportOptions): Promise<void> {
+  const logoBase64 = await loadLogoBase64();
+
   const pdf = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -363,7 +525,7 @@ export async function exportMessageToPDF({
   pdf.setTextColor(0, 0, 0);
   renderContentToPDF(pdf, content, margin, contentWidth, pageHeight, yPosition);
 
-  // Footer
+  // Footer + logo on all pages
   const totalPages = pdf.getNumberOfPages();
   for (let i = 1; i <= totalPages; i++) {
     pdf.setPage(i);
@@ -375,6 +537,10 @@ export async function exportMessageToPDF({
       pageHeight - 10,
       { align: 'center' }
     );
+  }
+
+  if (logoBase64) {
+    addLogoToPages(pdf, logoBase64, pageWidth, totalPages);
   }
 
   // Generate filename
@@ -394,6 +560,8 @@ export async function exportConversationToPDF({
   messages,
   title = 'Qodex Conversation',
 }: ConversationExportOptions): Promise<void> {
+  const logoBase64 = await loadLogoBase64();
+
   const pdf = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -475,7 +643,7 @@ export async function exportConversationToPDF({
     }
   }
 
-  // Footer on all pages
+  // Footer + logo on all pages
   const totalPages = pdf.getNumberOfPages();
   for (let i = 1; i <= totalPages; i++) {
     pdf.setPage(i);
@@ -487,6 +655,10 @@ export async function exportConversationToPDF({
       pageHeight - 10,
       { align: 'center' }
     );
+  }
+
+  if (logoBase64) {
+    addLogoToPages(pdf, logoBase64, pageWidth, totalPages);
   }
 
   // Generate filename
@@ -590,7 +762,7 @@ function preprocessDocumentContent(content: string): string {
       continue;
     }
 
-    // Convert bullet-like patterns to proper bullets
+    // Convert bullet-like patterns to proper markdown bullets
     if (/^[•●○]\s+/.test(line)) {
       formattedLines.push(`- ${line.replace(/^[•●○]\s+/, '')}`);
       continue;
@@ -630,6 +802,8 @@ export async function exportDocumentToPDF({
   fullContent,
   chunks,
 }: DocumentExportOptions): Promise<void> {
+  const logoBase64 = await loadLogoBase64();
+
   const pdf = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -691,7 +865,7 @@ export async function exportDocumentToPDF({
   const processedContent = preprocessDocumentContent(rawContent);
   yPosition = renderContentToPDF(pdf, processedContent, margin, contentWidth, pageHeight, yPosition);
 
-  // Footer on all pages
+  // Footer + logo on all pages
   const totalPages = pdf.getNumberOfPages();
   for (let i = 1; i <= totalPages; i++) {
     pdf.setPage(i);
@@ -703,6 +877,10 @@ export async function exportDocumentToPDF({
       pageHeight - 10,
       { align: 'center' }
     );
+  }
+
+  if (logoBase64) {
+    addLogoToPages(pdf, logoBase64, pageWidth, totalPages);
   }
 
   // Generate filename for download
