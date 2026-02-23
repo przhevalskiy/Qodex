@@ -85,7 +85,10 @@ export const useAuthStore = create<AuthStore>((set) => ({
       },
     });
     if (error) {
-      set({ error: error.message, isLoading: false });
+      const msg = error.message.toLowerCase().includes('rate limit')
+        ? 'Too many sign-up attempts. Please wait a few minutes and try again.'
+        : error.message;
+      set({ error: msg, isLoading: false });
       return false;
     }
     set({ isLoading: false });

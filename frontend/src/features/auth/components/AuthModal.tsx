@@ -10,7 +10,7 @@ interface AuthModalProps {
 }
 
 export function AuthModal({ isOpen }: AuthModalProps) {
-  const [mode, setMode] = useState<'login' | 'signup' | 'confirm'>('login');
+  const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -26,26 +26,18 @@ export function AuthModal({ isOpen }: AuthModalProps) {
       setRememberMe(rememberMe);
       await signIn(email, password);
     } else {
-      const success = await signUp(
+      await signUp(
         email,
         password,
         displayName || undefined,
         selectedAvatar,
         preferredName || undefined
       );
-      if (success) {
-        setMode('confirm');
-      }
     }
   };
 
   const toggleMode = () => {
     setMode(mode === 'login' ? 'signup' : 'login');
-    clearError();
-  };
-
-  const backToLogin = () => {
-    setMode('login');
     clearError();
   };
 
@@ -60,23 +52,11 @@ export function AuthModal({ isOpen }: AuthModalProps) {
       <div className="auth-header">
         <img src="/qodex-logo.png" alt="Qodex" className="auth-logo" />
         <h2 className="auth-title">
-          {mode === 'login' && 'Login or signup below'}
-          {mode === 'signup' && 'Create Account'}
-          {mode === 'confirm' && 'Check your email'}
+          {mode === 'login' ? 'Login or signup below' : 'Create Account'}
         </h2>
       </div>
 
-      {mode === 'confirm' ? (
-        <div className="auth-confirm">
-          <p className="auth-confirm-text">
-            We've sent a confirmation link to <strong>{email}</strong>. Please check your inbox and click the link to activate your account.
-          </p>
-          <button className="auth-submit" onClick={backToLogin}>
-            Back to Sign In
-          </button>
-        </div>
-      ) : (
-        <form className="auth-form" onSubmit={handleSubmit}>
+      <form className="auth-form" onSubmit={handleSubmit}>
           {mode === 'signup' && (
             <>
               <div className="auth-field">
@@ -227,7 +207,6 @@ export function AuthModal({ isOpen }: AuthModalProps) {
             )}
           </div>
         </form>
-      )}
     </Modal>
   );
 }
