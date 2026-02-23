@@ -43,18 +43,34 @@ async function loadLogoBase64(): Promise<string | null> {
   }
 }
 
+// Page header layout constants
+const LOGO_SIZE = 11;        // mm — logo height/width (square)
+const LOGO_Y = 4;            // mm from page top
+const HEADER_LINE_Y = 21;    // mm — divider line below logo (logo bottom = 18, +3 gap)
+const PAGE_CONTENT_Y = 33;   // mm — where content starts on every page (below line + 12 gap)
+
 /**
- * Add Qodex logo centered at the top of every page.
+ * Add Qodex logo + divider line centered at the top of every page.
  * Logo is ~square (2000x2032), rendered as 14×14mm.
+ * A light separator line is drawn below the logo at HEADER_LINE_Y.
  */
 function addLogoToPages(pdf: jsPDF, logoBase64: string, pageWidth: number, totalPages: number): void {
-  const logoSize = 14; // mm (square logo)
-  const logoX = (pageWidth - logoSize) / 2;
-  const logoY = 4;
+  const logoX = 20; // left-aligned at content margin
 
   for (let i = 1; i <= totalPages; i++) {
     pdf.setPage(i);
-    pdf.addImage(logoBase64, 'PNG', logoX, logoY, logoSize, logoSize);
+    pdf.addImage(logoBase64, 'PNG', logoX, LOGO_Y, LOGO_SIZE, LOGO_SIZE);
+    // "Qodex" text to the right of logo, vertically centered
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(17);
+    pdf.setTextColor(30, 30, 30);
+    pdf.text('Qodex', logoX + LOGO_SIZE + 3, LOGO_Y + LOGO_SIZE / 2 + 2.5);
+    // Divider line
+    pdf.setDrawColor(210, 215, 225);
+    pdf.setLineWidth(0.4);
+    pdf.line(20, HEADER_LINE_Y, pageWidth - 20, HEADER_LINE_Y);
+    pdf.setLineWidth(0.2); // reset
+    pdf.setDrawColor(200, 200, 200);
   }
 }
 
@@ -149,7 +165,7 @@ function renderTable(
     // Page break check
     if (yPosition + rowHeight > pageHeight - margin - 15) {
       pdf.addPage();
-      yPosition = margin;
+      yPosition = PAGE_CONTENT_Y;
     }
 
     // Header background
@@ -195,6 +211,7 @@ function renderTable(
 
 /**
  * Render formatted content to PDF with proper structure and styling.
+ * pageTopY: where content starts on a fresh page (accounts for logo + divider header).
  */
 function renderContentToPDF(
   pdf: jsPDF,
@@ -202,7 +219,8 @@ function renderContentToPDF(
   margin: number,
   contentWidth: number,
   pageHeight: number,
-  startY: number
+  startY: number,
+  pageTopY: number = PAGE_CONTENT_Y
 ): number {
   let yPosition = startY;
   let inCodeBlock = false;
@@ -211,7 +229,7 @@ function renderContentToPDF(
   const checkPageBreak = (height: number) => {
     if (yPosition + height > pageHeight - margin - 15) {
       pdf.addPage();
-      yPosition = margin;
+      yPosition = pageTopY;
     }
   };
 
@@ -484,7 +502,7 @@ export async function exportMessageToPDF({
   const pageHeight = pdf.internal.pageSize.getHeight();
   const margin = 20;
   const contentWidth = pageWidth - margin * 2;
-  let yPosition = margin;
+  let yPosition = PAGE_CONTENT_Y;
 
   // Title
   pdf.setFontSize(18);
@@ -572,13 +590,13 @@ export async function exportConversationToPDF({
   const pageHeight = pdf.internal.pageSize.getHeight();
   const margin = 20;
   const contentWidth = pageWidth - margin * 2;
-  let yPosition = margin;
+  let yPosition = PAGE_CONTENT_Y;
 
   // Helper to add new page if needed
   const checkPageBreak = (height: number) => {
     if (yPosition + height > pageHeight - margin - 15) {
       pdf.addPage();
-      yPosition = margin;
+      yPosition = PAGE_CONTENT_Y;
     }
   };
 
@@ -814,7 +832,7 @@ export async function exportDocumentToPDF({
   const pageHeight = pdf.internal.pageSize.getHeight();
   const margin = 20;
   const contentWidth = pageWidth - margin * 2;
-  let yPosition = margin;
+  let yPosition = PAGE_CONTENT_Y;
 
   // Document title (cleaned up for display)
   const docTitle = cleanDocumentTitle(filename);
