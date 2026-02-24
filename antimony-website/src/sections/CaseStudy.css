@@ -1,0 +1,133 @@
+.case-study__inner {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 80px;
+  align-items: start;
+  margin-top: 40px;
+}
+
+/* Left */
+.case-study__product-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px 6px 10px;
+  background: var(--accent-blue-dim);
+  border: 1px solid rgba(107, 140, 255, 0.22);
+  border-radius: 8px;
+  margin-bottom: 28px;
+}
+
+.case-study__product-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-blue-light);
+  letter-spacing: 0.02em;
+}
+
+.case-study__product-type {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.case-study__heading {
+  margin-bottom: 24px;
+}
+
+.case-study__description {
+  font-size: 15px;
+  color: var(--text-secondary);
+  line-height: 1.75;
+  margin-bottom: 16px;
+}
+
+.case-study__outcomes {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 36px;
+  padding-top: 36px;
+  border-top: 1px solid var(--border);
+}
+
+.case-study__outcome {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+}
+
+.case-study__outcome-metric {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-bronze);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  min-width: 90px;
+  flex-shrink: 0;
+}
+
+.case-study__outcome-label {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* Right card */
+.case-study__card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 28px;
+  position: sticky;
+  top: 100px;
+}
+
+.case-study__card-header {
+  margin-bottom: 14px;
+}
+
+.case-study__card-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.case-study__stack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.case-study__stack-item {
+  padding: 4px 10px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-bright);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.case-study__card-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 22px 0;
+}
+
+.case-study__sector {
+  font-size: 14px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+@media (max-width: 900px) {
+  .case-study__inner {
+    grid-template-columns: 1fr;
+    gap: 48px;
+  }
+  .case-study__card {
+    position: static;
+  }
+}

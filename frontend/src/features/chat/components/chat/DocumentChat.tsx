@@ -186,7 +186,7 @@ export function DocumentChat({ documentId, documentContent: _documentContent }: 
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Ask a question about this document..."
+              placeholder="Ask anything..."
               className="chat-input"
               rows={1}
               disabled={isDocumentChatStreaming}

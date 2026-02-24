@@ -2,6 +2,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import 'flowtoken/dist/styles.css';
 import { Copy, Check, Download, Loader2, RotateCcw } from 'lucide-react';
+import ExportDropdown from '../ui/ExportDropdown';
 import { getAvatarIcon } from '@/shared/constants/avatarIcons';
 import { Message, DocumentSource } from '@/shared/types';
 import { useState, useMemo, memo } from 'react';
@@ -9,7 +10,6 @@ import { useAuthStore } from '@/features/auth';
 import { SourcesDisplay } from '../sources/SourcesDisplay';
 import { SuggestedQuestions } from '../ui/SuggestedQuestions';
 import { InlineCitation } from '../input/InlineCitation';
-import { exportMessageToPDF } from '@/shared/services/pdfExport';
 import { remarkCitations } from '@/shared/utils/remarkCitations';
 import './ChatMessage.css';
 
@@ -260,7 +260,6 @@ export const ChatMessage = memo(function ChatMessage({ message, isStreaming, onR
   const displayName = useAuthStore((s) => s.user?.user_metadata?.display_name) || useAuthStore((s) => s.user?.email?.split('@')[0]) || 'You';
   const AvatarIcon = getAvatarIcon(useAuthStore((s) => s.user?.user_metadata?.avatar_icon));
   const [copied, setCopied] = useState(false);
-  const [exporting, setExporting] = useState(false);
   const [retrying, setRetrying] = useState(false);
 
   // Skip expensive emoji processing during streaming — AnimatedMarkdown uses raw content
@@ -296,21 +295,6 @@ export const ChatMessage = memo(function ChatMessage({ message, isStreaming, onR
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleExportPDF = async () => {
-    if (exporting) return;
-    setExporting(true);
-    try {
-      await exportMessageToPDF({
-        content: message.content,
-        provider: message.provider,
-        timestamp: message.timestamp,
-      });
-    } catch (error) {
-      console.error('Failed to export PDF:', error);
-    } finally {
-      setExporting(false);
-    }
-  };
 
   const handleRetry = async () => {
     if (retrying || !onRetry) return;
@@ -379,9 +363,18 @@ export const ChatMessage = memo(function ChatMessage({ message, isStreaming, onR
                   {retrying ? <Loader2 size={14} className="spinning" /> : <RotateCcw size={14} />}
                 </button>
               )}
-              <button className="message-export" onClick={handleExportPDF} title="Export to PDF" disabled={exporting}>
-                {exporting ? <Loader2 size={14} className="spinning" /> : <Download size={14} />}
-              </button>
+              <ExportDropdown
+                mode="message"
+                content={message.content}
+                provider={message.provider}
+                timestamp={message.timestamp}
+              >
+                {(_open, toggle) => (
+                  <button className="message-export" onClick={toggle} title="Download message">
+                    <Download size={14} />
+                  </button>
+                )}
+              </ExportDropdown>
               <button className="message-copy" onClick={handleCopy} title="Copy message">
                 {copied ? <Check size={14} /> : <Copy size={14} />}
               </button>

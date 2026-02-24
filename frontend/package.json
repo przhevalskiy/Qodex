@@ -11,6 +11,9 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.95.3",
+    "@types/file-saver": "^2.0.7",
+    "docx": "^9.6.0",
+    "file-saver": "^2.0.5",
     "flowtoken": "^1.0.40",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.0.0",

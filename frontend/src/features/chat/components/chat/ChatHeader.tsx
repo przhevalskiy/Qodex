@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Share2, Download, Loader2, Paperclip } from 'lucide-react';
+import { Share2, Download, Paperclip } from 'lucide-react';
 import { ShareModal } from '../modals/ShareModal';
 import { AttachmentPanel } from '../attachments/AttachmentPanel';
-import { exportConversationToPDF } from '@/shared/services/pdfExport';
+import ExportDropdown from '../ui/ExportDropdown';
 import { useChatStore } from '../../store';
 import { useAttachmentStore } from '@/features/attachments/store';
 import './ChatHeader.css';
@@ -15,33 +15,15 @@ interface ChatHeaderProps {
 export function ChatHeader({ discussionId, discussionTitle }: ChatHeaderProps) {
   const [showShareModal, setShowShareModal] = useState(false);
   const [showAttachments, setShowAttachments] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
   const { messages } = useChatStore();
   const { attachments, fetchAttachments, reset } = useAttachmentStore();
 
-  // Load attachments when discussion changes
   useEffect(() => {
     reset();
     if (discussionId) {
       fetchAttachments(discussionId);
     }
   }, [discussionId, fetchAttachments, reset]);
-
-  const handleExport = async () => {
-    if (isExporting || messages.length === 0) return;
-
-    setIsExporting(true);
-    try {
-      await exportConversationToPDF({
-        messages,
-        title: discussionTitle || 'Qodex Conversation',
-      });
-    } catch (error) {
-      console.error('Failed to export conversation:', error);
-    } finally {
-      setIsExporting(false);
-    }
-  };
 
   return (
     <>
@@ -58,15 +40,25 @@ export function ChatHeader({ discussionId, discussionTitle }: ChatHeaderProps) {
               <span className="chat-header-badge">{attachments.length}</span>
             )}
           </button>
-          <button
-            className="chat-header-btn"
-            onClick={handleExport}
-            disabled={isExporting || messages.length === 0}
-            title="Export conversation to PDF"
+
+          <ExportDropdown
+            mode="conversation"
+            messages={messages}
+            title={discussionTitle || 'Qodex Conversation'}
           >
-            {isExporting ? <Loader2 size={18} className="spinning" /> : <Download size={18} />}
-            <span className="visually-hidden">Export</span>
-          </button>
+            {(_open, toggle) => (
+              <button
+                className="chat-header-btn"
+                onClick={toggle}
+                disabled={messages.length === 0}
+                title="Download conversation"
+              >
+                <Download size={18} />
+                <span className="visually-hidden">Download</span>
+              </button>
+            )}
+          </ExportDropdown>
+
           <button
             className="chat-header-btn"
             onClick={() => setShowShareModal(true)}
