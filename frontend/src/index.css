@@ -30,16 +30,6 @@
   --brand-600: #2563eb;
   --brand-700: #1d4ed8;
 
-  /* Provider Colors */
-  --openai-color: #10a37f;
-  --openai-bg: #ecfdf5;
-  --mistral-color: #ff7000;
-  --mistral-bg: #fff7ed;
-  --claude-color: #d97706;
-  --claude-bg: #fffbeb;
-  --cohere-color: #0d9488;
-  --cohere-bg: #f0fdfa;
-
   /* Semantic */
   --color-error: #ef4444;
   --color-success: #22c55e;

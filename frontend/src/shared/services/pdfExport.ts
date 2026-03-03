@@ -518,10 +518,8 @@ export async function exportMessageToPDF({
   const metaParts: string[] = [];
   if (provider) {
     const providerNames: Record<string, string> = {
-      openai: 'OpenAI',
       mistral: 'Mistral',
       claude: 'Claude',
-      cohere: 'Cohere',
     };
     metaParts.push(`Provider: ${providerNames[provider] || provider}`);
   }
@@ -634,10 +632,8 @@ export async function exportConversationToPDF({
     } else {
       pdf.setTextColor(16, 185, 129); // Green for assistant
       const providerNames: Record<string, string> = {
-        openai: 'OpenAI',
         mistral: 'Mistral',
         claude: 'Claude',
-        cohere: 'Cohere',
       };
       const providerName = message.provider ? providerNames[message.provider] || message.provider : 'Qodex';
       pdf.text(`${providerName}:`, margin, yPosition);

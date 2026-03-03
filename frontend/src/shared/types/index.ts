@@ -23,6 +23,7 @@ export interface Message {
   citations?: Record<number, string>;  // Map citation numbers to document IDs
   suggested_questions?: string[];  // AI-generated follow-up questions
   intent?: string;  // Detected intent: "summarize", "case_study", etc.
+  research_mode?: ResearchMode;  // Active research depth: "quick", "enhanced", "deep"
 }
 
 // Discussion types
@@ -45,7 +46,7 @@ export interface DiscussionUpdate {
 }
 
 // Provider types
-export type ProviderName = 'mistral' | 'openai' | 'claude' | 'cohere';
+export type ProviderName = 'mistral' | 'claude' | 'auto';
 
 export interface Provider {
   name: ProviderName;

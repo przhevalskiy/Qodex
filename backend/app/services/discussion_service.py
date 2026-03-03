@@ -129,6 +129,7 @@ class DiscussionService:
             "citations": message.citations,
             "suggested_questions": message.suggested_questions,
             "intent": message.intent,
+            "research_mode": message.research_mode,
         }
         self._client.table("messages").insert(row).execute()
 
@@ -183,6 +184,7 @@ class DiscussionService:
             citations=row.get("citations"),
             suggested_questions=row.get("suggested_questions"),
             intent=row.get("intent"),
+            research_mode=row.get("research_mode"),
         )
 
 

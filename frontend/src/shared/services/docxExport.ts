@@ -32,10 +32,8 @@ interface ConversationExportOptions {
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 const PROVIDER_NAMES: Record<string, string> = {
-  openai: 'OpenAI',
   mistral: 'Mistral',
   claude: 'Claude',
-  cohere: 'Cohere',
 };
 
 function stripMarkdown(text: string): string {

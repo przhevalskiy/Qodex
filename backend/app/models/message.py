@@ -43,6 +43,7 @@ class Message(MessageBase):
     citations: Optional[dict] = None  # Map citation numbers to document IDs
     suggested_questions: Optional[List[str]] = None  # AI-generated follow-up questions
     intent: Optional[str] = None  # Detected intent: "summarize", "case_study", etc.
+    research_mode: Optional[str] = None  # Research depth: "quick", "enhanced", "deep"
 
     class Config:
         from_attributes = True

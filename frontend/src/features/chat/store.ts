@@ -10,6 +10,7 @@ interface ChatState {
   currentStreamSources: DocumentSource[];
   currentStreamSuggestedQuestions: string[];
   currentStreamIntent: { intent: string; label: string } | null;
+  currentStreamResearchMode: string | null;
   error: string | null;
   isLoadingMessages: boolean;
   _skipNextMessageLoad: boolean;
@@ -25,6 +26,7 @@ interface ChatActions {
   setStreamSources: (sources: DocumentSource[]) => void;
   setStreamSuggestedQuestions: (questions: string[]) => void;
   setStreamIntent: (intent: string, label: string) => void;
+  setStreamResearchMode: (mode: string) => void;
   finalizeStream: (messageId: string) => void;
   gracefulStop: (messageId: string, discussionId: string) => void;
   cancelStream: () => void;
@@ -83,6 +85,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   currentStreamSources: [],
   currentStreamSuggestedQuestions: [],
   currentStreamIntent: null,
+  currentStreamResearchMode: null,
   error: null,
   isLoadingMessages: false,
   _skipNextMessageLoad: false,
@@ -131,6 +134,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       currentStreamSources: [],
       currentStreamSuggestedQuestions: [],
       currentStreamIntent: null,
+      currentStreamResearchMode: null,
       error: null,
     });
   },
@@ -153,6 +157,10 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     set({ currentStreamIntent: { intent, label } });
   },
 
+  setStreamResearchMode: (mode: string) => {
+    set({ currentStreamResearchMode: mode });
+  },
+
   finalizeStream: (messageId: string) => {
     const state = get();
 
@@ -165,6 +173,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       sources: state.currentStreamSources.length > 0 ? state.currentStreamSources : undefined,
       suggested_questions: state.currentStreamSuggestedQuestions.length > 0 ? state.currentStreamSuggestedQuestions : undefined,
       intent: state.currentStreamIntent?.intent || undefined,
+      research_mode: (state.currentStreamResearchMode as Message['research_mode']) || undefined,
     };
 
     set(state => ({
@@ -175,6 +184,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       currentStreamSources: [],
       currentStreamSuggestedQuestions: [],
       currentStreamIntent: null,
+      currentStreamResearchMode: null,
     }));
   },
 
@@ -206,6 +216,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       sources: state.currentStreamSources.length > 0 ? state.currentStreamSources : undefined,
       suggested_questions: state.currentStreamSuggestedQuestions.length > 0 ? state.currentStreamSuggestedQuestions : undefined,
       intent: state.currentStreamIntent?.intent || undefined,
+      research_mode: (state.currentStreamResearchMode as Message['research_mode']) || undefined,
     };
 
     set(state => ({
@@ -216,6 +227,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       currentStreamSources: [],
       currentStreamSuggestedQuestions: [],
       currentStreamIntent: null,
+      currentStreamResearchMode: null,
     }));
 
     // Persist to backend so the message survives navigation
@@ -230,6 +242,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       currentStreamSources: [],
       currentStreamSuggestedQuestions: [],
       currentStreamIntent: null,
+      currentStreamResearchMode: null,
     });
   },
 
