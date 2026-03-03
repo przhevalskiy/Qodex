@@ -113,9 +113,6 @@ export function InputActionsDropdown() {
     setIsOpen(false);
   };
 
-  const activeModeConfig = RESEARCH_MODE_UI[activeMode];
-  const ActiveModeIcon = activeModeConfig.icon;
-
   return (
     <div className="input-actions">
       {/* Main trigger button */}
@@ -129,17 +126,6 @@ export function InputActionsDropdown() {
         {attachments.length > 0 && (
           <span className="input-actions-badge">{attachments.length}</span>
         )}
-      </button>
-
-      {/* Current research mode indicator */}
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className="input-actions-mode-indicator"
-        title={`Research mode: ${activeModeConfig.label}`}
-      >
-        <ActiveModeIcon size={14} />
-        <span>{activeModeConfig.label}</span>
       </button>
 
       <input

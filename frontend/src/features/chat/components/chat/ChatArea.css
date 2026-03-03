@@ -30,9 +30,8 @@
 
 /* Input Container - Default (bottom) */
 .chat-input-container {
-  border-top: 1px solid var(--gray-100);
   background-color: var(--color-white);
-  padding: 16px;
+  padding: 0 16px 16px 16px;
 }
 
 .chat-input-wrapper {
