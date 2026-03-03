@@ -1,4 +1,4 @@
-import { Mic, MicOff } from 'lucide-react';
+import { AudioLines } from 'lucide-react';
 import { useVoice } from '@/shared/hooks/useVoice';
 
 interface VoiceInputProps {
@@ -7,23 +7,9 @@ interface VoiceInputProps {
 }
 
 export function VoiceInput({ onTranscript, disabled }: VoiceInputProps) {
-  const { isRecording, isSupported, startRecording, stopRecording, error } = useVoice(
-    (text) => {
-      onTranscript(text);
-    }
-  );
+  const { isRecording, isSupported, startRecording, stopRecording, error } = useVoice(onTranscript);
 
-  if (!isSupported) {
-    return (
-      <button
-        disabled
-        className="flex h-9 w-9 cursor-not-allowed items-center justify-center rounded-xl text-text-tertiary opacity-40"
-        title="Voice input not supported in this browser"
-      >
-        <MicOff size={18} />
-      </button>
-    );
-  }
+  if (!isSupported) return null;
 
   const handleClick = () => {
     if (isRecording) {
@@ -34,33 +20,26 @@ export function VoiceInput({ onTranscript, disabled }: VoiceInputProps) {
   };
 
   return (
-    <div className="relative">
+    <div style={{ position: 'relative' }}>
       <button
+        type="button"
         onClick={handleClick}
         disabled={disabled}
-        className={`flex h-9 w-9 items-center justify-center rounded-xl transition-all ${
-          isRecording
-            ? 'bg-red-500 text-white animate-pulse'
-            : 'text-text-tertiary hover:bg-bg-secondary hover:text-text-primary'
-        } disabled:cursor-not-allowed disabled:opacity-50`}
-        title={isRecording ? 'Stop recording' : 'Start voice input'}
+        className={`input-action-btn${isRecording ? ' recording' : ''}`}
+        title={isRecording ? 'Stop recording' : 'Voice input'}
       >
-        <Mic size={18} />
+        <AudioLines size={20} />
       </button>
 
-      {/* Recording indicator */}
       {isRecording && (
-        <div className="absolute bottom-full right-0 mb-2 flex items-center gap-2 whitespace-nowrap rounded-xl bg-red-500 px-3 py-1.5 text-xs font-medium text-white shadow-lg">
-          <span className="h-2 w-2 animate-pulse rounded-full bg-white" />
+        <div className="voice-listening-indicator">
+          <span className="voice-listening-dot" />
           Listening...
         </div>
       )}
 
-      {/* Error message */}
       {error && (
-        <div className="absolute bottom-full right-0 mb-2 rounded-xl border border-red-200 bg-red-50 px-3 py-1.5 text-xs text-red-600">
-          {error}
-        </div>
+        <div className="voice-error-indicator">{error}</div>
       )}
     </div>
   );

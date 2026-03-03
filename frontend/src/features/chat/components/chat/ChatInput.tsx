@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect, FormEvent, KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowUp, Square, AudioLines } from 'lucide-react';
+import { ArrowUp, Square } from 'lucide-react';
 import { useSSE } from '@/shared/hooks/useSSE';
 import { useChatStore } from '@/features/chat';
 import { useDiscussionStore } from '@/features/discussions';
 import { ProviderToggles } from '@/features/providers';
 import { InputActionsDropdown } from '../input/InputActionsDropdown';
+import { VoiceInput } from '../ui/VoiceInput';
 import './ChatInput.css';
 
 interface ChatInputProps {
@@ -93,10 +94,6 @@ export function ChatInput({ initialValue = '', onValueChange }: ChatInputProps) 
 
   return (
     <div className="chat-input">
-      <div className="chat-input-toggles">
-        <ProviderToggles />
-      </div>
-
       <form className="chat-input-form" onSubmit={handleSubmit}>
         <div className="chat-input-box">
           <InputActionsDropdown />
@@ -112,9 +109,18 @@ export function ChatInput({ initialValue = '', onValueChange }: ChatInputProps) 
             className="chat-textarea"
           />
 
-          <button type="button" className="input-action-btn" title="Voice input">
-            <AudioLines size={20} />
-          </button>
+          <ProviderToggles />
+
+          <VoiceInput
+            onTranscript={(text) => {
+              setInput(prev => {
+                const newValue = prev ? `${prev} ${text}` : text;
+                onValueChange?.(newValue);
+                return newValue;
+              });
+            }}
+            disabled={isStreaming}
+          />
 
           {isStreaming ? (
             <button
