@@ -22,9 +22,7 @@ type ProviderStore = ProviderState & ProviderActions;
 
 const DEFAULT_PROVIDERS: Provider[] = [
   { name: 'mistral', display_name: 'Mistral', model: 'mistral-large-latest', configured: false },
-  { name: 'openai', display_name: 'OpenAI', model: 'gpt-4.1', configured: false },
   { name: 'claude', display_name: 'Claude', model: 'claude-sonnet-4-5-20250929', configured: false },
-  { name: 'cohere', display_name: 'Cohere', model: 'command-a-03-2025', configured: false },
 ];
 
 export const useProviderStore = create<ProviderStore>()(
@@ -32,7 +30,7 @@ export const useProviderStore = create<ProviderStore>()(
     (set, get) => ({
       // State
       providers: DEFAULT_PROVIDERS,
-      activeProvider: 'mistral',
+      activeProvider: 'auto',
       isLoading: false,
       error: null,
 
@@ -46,13 +44,16 @@ export const useProviderStore = create<ProviderStore>()(
             isLoading: false,
           });
 
-          // Set first configured provider as active if current is not configured
+          // Set first configured provider as active if current is not configured.
+          // Don't touch 'auto' — it's a valid selection that doesn't need a configured key.
           const state = get();
-          const currentActive = response.providers.find(p => p.name === state.activeProvider);
-          if (!currentActive?.configured) {
-            const firstConfigured = response.providers.find(p => p.configured);
-            if (firstConfigured) {
-              set({ activeProvider: firstConfigured.name });
+          if (state.activeProvider !== 'auto') {
+            const currentActive = response.providers.find(p => p.name === state.activeProvider);
+            if (!currentActive?.configured) {
+              const firstConfigured = response.providers.find(p => p.configured);
+              if (firstConfigured) {
+                set({ activeProvider: firstConfigured.name });
+              }
             }
           }
         } catch (error) {
@@ -61,6 +62,10 @@ export const useProviderStore = create<ProviderStore>()(
       },
 
       setActiveProvider: (name: ProviderName) => {
+        if (name === 'auto') {
+          set({ activeProvider: 'auto' });
+          return;
+        }
         const state = get();
         const provider = state.providers.find(p => p.name === name);
         if (provider?.configured) {

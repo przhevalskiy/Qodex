@@ -269,10 +269,10 @@ class ChatRequest(BaseModel):
     """Request model for chat endpoint."""
     discussion_id: str
     message: str
-    provider: str  # openai, mistral, claude, cohere
+    provider: str  # mistral, claude
     document_ids: Optional[List[str]] = None
     attachment_ids: Optional[List[str]] = None  # conversation-scoped attachments
-    temperature: float = 0.7
+    temperature: float = 0.1
     max_tokens: int = 4096
     research_mode: ResearchMode = DEFAULT_RESEARCH_MODE
 
@@ -304,24 +304,27 @@ async def stream_chat(
 
     # Get provider configuration
     provider_configs = {
-        "openai": (settings.openai_api_key, settings.openai_model),
         "mistral": (settings.mistral_api_key, settings.mistral_model),
         "claude": (settings.anthropic_api_key, settings.anthropic_model),
-        "cohere": (settings.cohere_api_key, settings.cohere_model),
     }
 
-    if request.provider not in provider_configs:
+    valid_providers = set(provider_configs.keys()) | {"auto"}
+    if request.provider not in valid_providers:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid provider: {request.provider}. Valid providers: {list(provider_configs.keys())}"
+            detail=f"Invalid provider: {request.provider}. Valid providers: {sorted(valid_providers)}"
         )
 
-    api_key, model = provider_configs[request.provider]
-    if not api_key:
-        raise HTTPException(
-            status_code=400,
-            detail=f"API key not configured for provider: {request.provider}"
-        )
+    # For explicit providers, validate key upfront. For "auto", defer until after intent classification.
+    if request.provider != "auto":
+        api_key, model = provider_configs[request.provider]
+        if not api_key:
+            raise HTTPException(
+                status_code=400,
+                detail=f"API key not configured for provider: {request.provider}"
+            )
+    else:
+        api_key, model = None, None  # resolved after intent classification
 
     # Add user message to discussion
     user_message = Message(
@@ -347,6 +350,25 @@ async def stream_chat(
     # Classify user intent for structured output (zero-latency regex matching)
     # When attachments exist, also determines if Pinecone should be queried
     intent_result = classify_intent(request.message, has_attachments=has_attachments)
+
+    # Resolve effective provider:
+    # - "auto": use intent's preferred_provider if its key is configured, else fall back to first configured
+    # - explicit (mistral/claude): always use the user's selection, no override
+    if request.provider == "auto":
+        preferred = intent_result.preferred_provider
+        if preferred and provider_configs.get(preferred, (None, None))[0]:
+            effective_provider = preferred
+        else:
+            # Fall back to first configured provider
+            effective_provider = next(
+                (name for name, (key, _) in provider_configs.items() if key), None
+            )
+        if not effective_provider:
+            raise HTTPException(status_code=400, detail="No AI provider is configured")
+        api_key, model = provider_configs[effective_provider]
+        logger.info(f"Auto mode: intent '{intent_result.intent}' → provider '{effective_provider}'")
+    else:
+        effective_provider = request.provider
 
     # Get research mode configuration
     research_config = get_research_mode_config(request.research_mode)
@@ -406,7 +428,7 @@ async def stream_chat(
     # Get the provider (runs in parallel with RAG search)
     try:
         provider = ProviderRegistry.get_provider(
-            name=request.provider,
+            name=effective_provider,
             api_key=api_key,
             model=model
         )
@@ -538,7 +560,7 @@ async def stream_chat(
                 "openclimatecurriculum@gsb.columbia.edu for assistance."
             )
             async def _error_stream():
-                yield f"data: {json.dumps({'type': 'error', 'error': error_msg, 'provider': request.provider})}\n\n"
+                yield f"data: {json.dumps({'type': 'error', 'error': error_msg, 'provider': effective_provider})}\n\n"
             return StreamingResponse(
                 _error_stream(),
                 media_type="text/event-stream",
@@ -580,7 +602,7 @@ async def stream_chat(
             sources_data = {
                 "type": "sources",
                 "sources": [s.model_dump() for s in sources],
-                "provider": request.provider
+                "provider": effective_provider
             }
             yield f"data: {json.dumps(sources_data)}\n\n"
 
@@ -608,7 +630,7 @@ async def stream_chat(
 
         async for sse_event in create_sse_response(
             _collect_and_stream(),
-            provider=request.provider,
+            provider=effective_provider,
             send_done=False,
         ):
             yield sse_event
@@ -621,11 +643,12 @@ async def stream_chat(
             id=str(uuid.uuid4()),
             content=full_response_text,
             role=MessageRole.ASSISTANT,
-            provider=request.provider,
+            provider=effective_provider,
             timestamp=datetime.utcnow(),
             response_time_ms=response_time,
             sources=sources if sources else None,
             intent=intent_result.intent,
+            research_mode=request.research_mode.value,
         )
 
         # Generate suggested questions
@@ -658,7 +681,7 @@ async def stream_chat(
             # Don't fail the whole request if question generation fails
 
         # Send done event after suggested questions
-        yield format_sse_event("done", {"provider": request.provider})
+        yield format_sse_event("done", {"provider": effective_provider})
 
         disc_service.add_message(request.discussion_id, assistant_message)
 
@@ -686,22 +709,10 @@ async def list_providers():
             "configured": bool(settings.mistral_api_key),
         },
         {
-            "name": "openai",
-            "display_name": "OpenAI",
-            "model": settings.openai_model,
-            "configured": bool(settings.openai_api_key),
-        },
-        {
             "name": "claude",
             "display_name": "Claude",
             "model": settings.anthropic_model,
             "configured": bool(settings.anthropic_api_key),
-        },
-        {
-            "name": "cohere",
-            "display_name": "Cohere",
-            "model": settings.cohere_model,
-            "configured": bool(settings.cohere_api_key),
         },
     ]
 

@@ -14,6 +14,7 @@ class IntentResult:
     label: str           # Display label: "Summary", "Case Study", etc.
     prompt_suffix: str   # Appended to system prompt
     use_knowledge_base: bool = True  # Whether to query Pinecone
+    preferred_provider: Optional[str] = None  # Override user-selected provider if set
 
 
 # Intent definitions: (intent_key, display_label, patterns, prompt_suffix)
@@ -21,6 +22,7 @@ INTENT_DEFINITIONS = [
     {
         "intent": "summarize",
         "label": "Summary",
+        "preferred_provider": "mistral",
         "patterns": [
             r"\bsummar(y|ize|ise)\b",
             r"\boverview\b",
@@ -48,6 +50,7 @@ INTENT_DEFINITIONS = [
     {
         "intent": "explain",
         "label": "Explainer",
+        "preferred_provider": "claude",
         "patterns": [
             r"\bexplain\b",
             r"\bsimpl(er|ify|e terms)\b",
@@ -73,6 +76,7 @@ INTENT_DEFINITIONS = [
     {
         "intent": "compare",
         "label": "Comparison",
+        "preferred_provider": "mistral",
         "patterns": [
             r"\bcompar(e|ison|ing)\b",
             r"\bdifferen(ce|t|ces|tiate)\b",
@@ -99,6 +103,7 @@ INTENT_DEFINITIONS = [
     {
         "intent": "case_study",
         "label": "Case Study",
+        "preferred_provider": "claude",
         "patterns": [
             r"\bcase stud(y|ies)\b",
             r"\breal[- ]?world example\b",
@@ -129,6 +134,7 @@ INTENT_DEFINITIONS = [
     {
         "intent": "generate_questions",
         "label": "Assessment",
+        "preferred_provider": "mistral",
         "patterns": [
             r"\b(generate|create|write|give me|suggest|come up with) .*(questions?|quiz|exam|test|assessment)\b",
             r"\bquiz me\b",
@@ -157,6 +163,7 @@ INTENT_DEFINITIONS = [
     {
         "intent": "critique",
         "label": "Critique",
+        "preferred_provider": "claude",
         "patterns": [
             r"\bcritiqu(e|ing)\b",
             r"\bweakness(es)?\b",
@@ -187,6 +194,7 @@ INTENT_DEFINITIONS = [
     {
         "intent": "methodology",
         "label": "Methodology",
+        "preferred_provider": "mistral",
         "patterns": [
             r"\bmethodolog(y|ies|ical)\b",
             r"\bresearch (design|method|approach)\b",
@@ -213,6 +221,7 @@ INTENT_DEFINITIONS = [
     {
         "intent": "lesson_plan",
         "label": "Lesson Plan",
+        "preferred_provider": "claude",
         "patterns": [
             r"\blesson plan\b",
             r"\bteaching (plan|strategy|approach|activity|activities)\b",
@@ -324,12 +333,14 @@ def classify_intent(message: str, has_attachments: bool = False) -> IntentResult
                     label=definition["label"],
                     prompt_suffix=definition["prompt_suffix"],
                     use_knowledge_base=use_kb,
+                    preferred_provider=definition.get("preferred_provider"),
                 )
 
     # Fallback: generalist agent — comprehensive, well-structured responses
     return IntentResult(
         intent="generalist",
         label="Generalist",
+        preferred_provider="claude",
         prompt_suffix=(
             "\n\nProvide a comprehensive, well-structured response:\n"
             "- Lead with a clear, concise answer to the user's question\n"
