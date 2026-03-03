@@ -401,10 +401,8 @@ async def chat_with_document(document_id: str, request: DocumentChatRequest):
         # Get provider configuration
         settings = get_settings()
         provider_configs = {
-            "openai": (settings.openai_api_key, settings.openai_model),
             "mistral": (settings.mistral_api_key, settings.mistral_model),
             "claude": (settings.anthropic_api_key, settings.anthropic_model),
-            "cohere": (settings.cohere_api_key, settings.cohere_model),
         }
         
         if request.provider not in provider_configs:
