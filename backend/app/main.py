@@ -8,10 +8,8 @@ from app.services.document_service import get_document_service
 
 # Import providers to register them
 from app.providers import (
-    OpenAIProvider,
     MistralProvider,
     ClaudeProvider,
-    CohereProvider,
 )
 
 
@@ -26,10 +24,8 @@ async def lifespan(app: FastAPI):
 
     # Log configured providers
     providers_status = {
-        "OpenAI": bool(settings.openai_api_key),
         "Mistral": bool(settings.mistral_api_key),
         "Claude": bool(settings.anthropic_api_key),
-        "Cohere": bool(settings.cohere_api_key),
     }
     print(f"Configured providers: {providers_status}")
 
@@ -93,10 +89,8 @@ async def health_check():
     return {
         "status": "healthy",
         "providers": {
-            "openai": bool(settings.openai_api_key),
             "mistral": bool(settings.mistral_api_key),
             "claude": bool(settings.anthropic_api_key),
-            "cohere": bool(settings.cohere_api_key),
         },
         "pinecone": bool(settings.pinecone_api_key)
     }
