@@ -4,6 +4,7 @@ import remarkGfm from 'remark-gfm';
 import { ArrowUp, ArrowUpRight } from 'lucide-react';
 import { useDocumentPreviewStore } from '@/features/documents';
 import { useAuthStore } from '@/features/auth';
+import { ThinkingIndicator } from '../ui/ThinkingIndicator';
 import { getAvatarIcon } from '@/shared/constants/avatarIcons';
 import { remarkCitations } from '@/shared/utils/remarkCitations';
 import { exportDocumentToPDF } from '@/shared/services/pdfExport';
@@ -167,8 +168,11 @@ export function DocumentChat({ documentId, documentContent: _documentContent }: 
                     <span className="message-author">Qodex</span>
                   </div>
                   <div className="message-text markdown-body streaming">
-                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkCitations]} components={docChatComponents}>{documentChatContent}</ReactMarkdown>
-                    <span className="streaming-cursor">|</span>
+                    {!documentChatContent ? (
+                      <ThinkingIndicator />
+                    ) : (
+                      <ReactMarkdown remarkPlugins={[remarkGfm, remarkCitations]} components={docChatComponents}>{documentChatContent}</ReactMarkdown>
+                    )}
                   </div>
                 </div>
               </div>
