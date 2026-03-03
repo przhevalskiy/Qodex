@@ -138,13 +138,6 @@ interface ChatMessageProps {
   onQuestionClick?: (question: string) => void;
 }
 
-const providerNames: Record<string, string> = {
-  openai: 'OpenAI',
-  mistral: 'Mistral',
-  claude: 'Claude',
-  cohere: 'Cohere',
-};
-
 const intentLabels: Record<string, string> = {
   generalist: 'Generalist',
   summarize: 'Summary',
@@ -158,28 +151,29 @@ const intentLabels: Record<string, string> = {
 };
 
 const intentDescriptions: Record<string, string> = {
-  generalist: 'Comprehensive, well-structured responses adapted to the complexity of the question',
-  summarize: 'Structures output with key findings, methodology, implications, and limitations',
-  explain: 'Breaks down concepts with definitions, analogies, and progressive complexity',
-  compare: 'Analyzes dimensions of comparison with balanced, evidence-based synthesis',
-  case_study: 'Frames response as a case study with context, stakeholders, and discussion questions',
-  generate_questions: 'Creates assessment questions across Bloom\'s Taxonomy levels with answer keys',
-  critique: 'Provides balanced critical analysis of strengths, weaknesses, and alternative perspectives',
-  methodology: 'Reviews research design, data sources, analytical approach, and validity',
-  lesson_plan: 'Designs teaching resources with objectives, activities, prompts, and assessments',
+  generalist: 'Grounded in retrieved sources with inline citations. Adapts structure and depth to the complexity of the question.',
+  summarize: 'Extracts key findings, methodology, and implications directly from retrieved sources. Minimal inference.',
+  explain: 'Simplifies retrieved content using definitions and analogies. May elaborate beyond direct source text to aid understanding — treat as a guided interpretation, not a verbatim quote.',
+  compare: 'Analyzes retrieved sources across defined dimensions. Evidence-backed synthesis with balanced presentation of each side.',
+  case_study: 'Frames retrieved content as a structured case study. All claims grounded in sources; any inferences are flagged explicitly.',
+  generate_questions: 'Creates assessment questions directly from retrieved source content across Bloom\'s Taxonomy levels.',
+  critique: 'Balanced critical analysis of retrieved content — strengths, gaps, methodological concerns, and alternative perspectives.',
+  methodology: 'Reviews research design, data sources, and analytical approach from retrieved materials. Distinguishes retrieved facts from interpretation.',
+  lesson_plan: 'Designs teaching resources synthesised from retrieved syllabi content. Targets graduate-level audience unless otherwise specified.',
 };
 
 const allIntents = [
-  { key: 'generalist', label: 'Generalist', desc: 'Comprehensive answers' },
-  { key: 'summarize', label: 'Summary', desc: 'Key findings & implications' },
-  { key: 'explain', label: 'Explainer', desc: 'Simplified breakdowns' },
-  { key: 'compare', label: 'Comparison', desc: 'Side-by-side analysis' },
-  { key: 'case_study', label: 'Case Study', desc: 'Real-world framing' },
-  { key: 'generate_questions', label: 'Assessment', desc: 'Quiz & exam questions' },
-  { key: 'critique', label: 'Critique', desc: 'Strengths & weaknesses' },
-  { key: 'methodology', label: 'Methodology', desc: 'Research design review' },
-  { key: 'lesson_plan', label: 'Lesson Plan', desc: 'Teaching resources' },
+  { key: 'generalist', label: 'Generalist', desc: 'Cited answers, adaptive depth' },
+  { key: 'summarize', label: 'Summary', desc: 'Key findings, minimal inference' },
+  { key: 'explain', label: 'Explainer', desc: 'Simplified — may elaborate beyond sources' },
+  { key: 'compare', label: 'Comparison', desc: 'Evidence-based, side-by-side' },
+  { key: 'case_study', label: 'Case Study', desc: 'Source-grounded, flags inferences' },
+  { key: 'generate_questions', label: 'Assessment', desc: 'Quiz & exam from source content' },
+  { key: 'critique', label: 'Critique', desc: 'Strengths & gaps analysis' },
+  { key: 'methodology', label: 'Methodology', desc: 'Research design from sources' },
+  { key: 'lesson_plan', label: 'Lesson Plan', desc: 'Teaching resources from syllabi' },
 ];
+
 
 // Pre-define markdown components outside component to avoid recreation
 const markdownComponents = {
@@ -344,11 +338,6 @@ export const ChatMessage = memo(function ChatMessage({ message, isStreaming, onR
                   ))}
                 </div>
               </div>
-            </span>
-          )}
-          {!isUser && message.provider && (
-            <span className={`message-provider ${message.provider}`}>
-              {providerNames[message.provider] || message.provider}
             </span>
           )}
           {message.response_time_ms && (

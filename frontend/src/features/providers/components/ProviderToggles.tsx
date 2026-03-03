@@ -1,6 +1,5 @@
-import { useState } from 'react';
-import { MoreVertical } from 'lucide-react';
-import { Modal } from '@/components/ui/Modal';
+import { useState, useRef, useEffect } from 'react';
+import { ChevronDown, Check } from 'lucide-react';
 import { useProviderStore } from '../store';
 import { ProviderName } from '@/shared/types';
 import './ProviderToggles.css';
@@ -8,88 +7,65 @@ import './ProviderToggles.css';
 interface ProviderTogglesProps {
   selectedProvider?: ProviderName;
   onProviderChange?: (name: ProviderName) => void;
-  compact?: boolean;
 }
 
-export function ProviderToggles({ selectedProvider, onProviderChange, compact = false }: ProviderTogglesProps = {}) {
+export function ProviderToggles({ selectedProvider, onProviderChange }: ProviderTogglesProps = {}) {
   const { providers, activeProvider, setActiveProvider } = useProviderStore();
-  const [isMobileModalOpen, setIsMobileModalOpen] = useState(false);
+  const [open, setOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
 
   const currentProvider = selectedProvider || activeProvider;
   const handleProviderChange = onProviderChange || setActiveProvider;
-
-  const handleMobileProviderSelect = (name: ProviderName) => {
-    handleProviderChange(name);
-    setIsMobileModalOpen(false);
-  };
-
   const activeProviderObj = providers.find(p => p.name === currentProvider);
+  const displayName = currentProvider === 'auto' ? 'Auto' : (activeProviderObj?.display_name ?? 'Model');
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   return (
-    <>
-      {/* Desktop: Regular toggles */}
-      <div className={`provider-toggles ${compact ? 'compact' : ''}`}>
-        {providers.map((provider) => {
-          const isActive = provider.name === currentProvider;
-          const isConfigured = provider.configured;
-
-          return (
-            <button
-              key={provider.name}
-              className={`provider-toggle ${provider.name} ${isActive ? 'active' : ''} ${!isConfigured ? 'disabled' : ''}`}
-              onClick={() => handleProviderChange(provider.name)}
-              disabled={!isConfigured}
-              title={
-                isConfigured
-                  ? `${provider.display_name} (${provider.model})`
-                  : `${provider.display_name} - Not configured`
-              }
-            >
-              {provider.display_name}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Mobile: 3-dot icon button */}
-      <button
-        className="provider-mobile-btn"
-        onClick={() => setIsMobileModalOpen(true)}
-        title="Select AI Model"
-      >
-        <span className="provider-mobile-current">{activeProviderObj?.display_name}</span>
-        <MoreVertical size={18} />
-      </button>
-
-      {/* Mobile Modal */}
-      <Modal
-        isOpen={isMobileModalOpen}
-        onClose={() => setIsMobileModalOpen(false)}
-        title="Select AI Model"
-        size="sm"
-      >
-        <div className="provider-modal-list">
+    <div className="provider-inline" ref={wrapperRef}>
+      {open && (
+        <div className="provider-inline-dropdown">
+          <button
+            className={`provider-inline-option ${currentProvider === 'auto' ? 'active' : ''}`}
+            onClick={() => { handleProviderChange('auto'); setOpen(false); }}
+          >
+            <span>Auto</span>
+            {currentProvider === 'auto' && <Check size={13} strokeWidth={2.5} />}
+          </button>
+          <div className="provider-inline-divider" />
           {providers.map((provider) => {
             const isActive = provider.name === currentProvider;
-            const isConfigured = provider.configured;
-
             return (
               <button
                 key={provider.name}
-                className={`provider-modal-option ${provider.name} ${isActive ? 'active' : ''}`}
-                onClick={() => handleMobileProviderSelect(provider.name)}
-                disabled={!isConfigured}
+                className={`provider-inline-option ${isActive ? 'active' : ''}`}
+                onClick={() => { handleProviderChange(provider.name); setOpen(false); }}
+                disabled={!provider.configured}
               >
-                <div className="provider-modal-option-content">
-                  <span className="provider-modal-option-name">{provider.display_name}</span>
-                  <span className="provider-modal-option-model">{provider.model}</span>
-                </div>
-                {isActive && <span className="provider-modal-option-check">✓</span>}
+                <span>{provider.display_name}</span>
+                {isActive && <Check size={13} strokeWidth={2.5} />}
               </button>
             );
           })}
         </div>
-      </Modal>
-    </>
+      )}
+
+      <button
+        className={`provider-inline-toggle ${open ? 'open' : ''} ${currentProvider === 'auto' ? 'auto' : ''}`}
+        onClick={() => setOpen(o => !o)}
+        title="Switch AI model"
+      >
+        <span>{displayName}</span>
+        <ChevronDown size={13} strokeWidth={2.5} className={`provider-chevron ${open ? 'flipped' : ''}`} />
+      </button>
+    </div>
   );
 }

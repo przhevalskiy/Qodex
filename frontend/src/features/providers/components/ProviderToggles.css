@@ -1,190 +1,98 @@
-/* Provider Toggles Container */
-.provider-toggles {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px;
-  background-color: var(--gray-100);
-  border-radius: 12px;
+/* Inline provider toggle wrapper — sits inside the input box */
+.provider-inline {
+  position: relative;
+  flex-shrink: 0;
 }
 
-/* Individual Toggle */
-.provider-toggle {
-  padding: 8px 16px;
+/* The visible pill button */
+.provider-inline-toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  background-color: var(--gray-100);
+  border-radius: 20px;
   font-size: 13px;
   font-weight: 500;
-  border-radius: 8px;
-  transition: all var(--transition-fast);
+  color: var(--gray-600);
+  white-space: nowrap;
+  transition: background-color 0.15s, color 0.15s;
+  cursor: pointer;
 }
 
-/* Inactive State - Provider Specific Colors */
-.provider-toggle.openai {
-  color: var(--openai-color);
-  background-color: transparent;
+.provider-inline-toggle:hover,
+.provider-inline-toggle.open {
+  background-color: var(--gray-200);
+  color: var(--gray-800);
 }
 
-.provider-toggle.openai:hover:not(:disabled) {
-  background-color: var(--openai-bg);
+/* Chevron rotation */
+.provider-chevron {
+  transition: transform 0.15s;
 }
 
-.provider-toggle.mistral {
-  color: var(--mistral-color);
-  background-color: transparent;
+.provider-chevron.flipped {
+  transform: rotate(180deg);
 }
 
-.provider-toggle.mistral:hover:not(:disabled) {
-  background-color: var(--mistral-bg);
+/* Dropdown menu — appears above the toggle */
+.provider-inline-dropdown {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  background: #ffffff;
+  border: 1px solid var(--gray-200);
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.10);
+  overflow: hidden;
+  z-index: 200;
+  min-width: 130px;
 }
 
-.provider-toggle.claude {
-  color: var(--claude-color);
-  background-color: transparent;
+/* Dropdown option */
+.provider-inline-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gray-700);
+  background: transparent;
+  text-align: left;
+  transition: background-color 0.1s;
+  cursor: pointer;
 }
 
-.provider-toggle.claude:hover:not(:disabled) {
-  background-color: var(--claude-bg);
+.provider-inline-option:hover:not(:disabled) {
+  background-color: var(--gray-50);
 }
 
-.provider-toggle.cohere {
-  color: var(--cohere-color);
-  background-color: transparent;
+.provider-inline-option.active {
+  color: var(--gray-900);
+  font-weight: 600;
 }
 
-.provider-toggle.cohere:hover:not(:disabled) {
-  background-color: var(--cohere-bg);
-}
-
-/* Active State */
-.provider-toggle.active.openai {
-  background-color: var(--openai-color);
-  color: white;
-}
-
-.provider-toggle.active.mistral {
-  background-color: var(--mistral-color);
-  color: white;
-}
-
-.provider-toggle.active.claude {
-  background-color: var(--claude-color);
-  color: white;
-}
-
-.provider-toggle.active.cohere {
-  background-color: var(--cohere-color);
-  color: white;
-}
-
-/* Disabled State */
-.provider-toggle.disabled {
+.provider-inline-option:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
 
-/* Mobile Button */
-.provider-mobile-btn {
-  display: none;  /* Hidden by default (desktop) */
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
+.provider-inline-divider {
+  height: 1px;
   background-color: var(--gray-100);
-  border-radius: 12px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--gray-700);
-  transition: all var(--transition-fast);
+  margin: 3px 0;
 }
 
-.provider-mobile-btn:hover {
-  background-color: var(--gray-200);
+.provider-inline-toggle.auto {
+  background-color: #eff6ff;
+  color: #3b82f6;
 }
 
-.provider-mobile-current {
-  font-weight: 600;
-}
-
-/* Provider Modal List */
-.provider-modal-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.provider-modal-option {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px;
-  border-radius: 8px;
-  border: 2px solid transparent;
-  background-color: var(--gray-50);
-  transition: all var(--transition-fast);
-  text-align: left;
-  width: 100%;
-}
-
-.provider-modal-option:hover:not(:disabled) {
-  background-color: var(--gray-100);
-}
-
-.provider-modal-option.active {
-  border-color: var(--brand-500);
-  background-color: var(--brand-50);
-}
-
-.provider-modal-option:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.provider-modal-option-content {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.provider-modal-option-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--gray-900);
-}
-
-.provider-modal-option.openai .provider-modal-option-name {
-  color: var(--openai-color);
-}
-
-.provider-modal-option.mistral .provider-modal-option-name {
-  color: var(--mistral-color);
-}
-
-.provider-modal-option.claude .provider-modal-option-name {
-  color: var(--claude-color);
-}
-
-.provider-modal-option.cohere .provider-modal-option-name {
-  color: var(--cohere-color);
-}
-
-.provider-modal-option-model {
-  font-size: 12px;
-  color: var(--gray-500);
-}
-
-.provider-modal-option-check {
-  font-size: 20px;
-  color: var(--brand-600);
-  font-weight: 700;
-}
-
-/* ===== MOBILE RESPONSIVE ===== */
-@media (max-width: 640px) {
-  /* Hide desktop toggles on mobile */
-  .provider-toggles {
-    display: none;
-  }
-
-  /* Show mobile button on mobile */
-  .provider-mobile-btn {
-    display: flex;
-  }
+.provider-inline-toggle.auto:hover,
+.provider-inline-toggle.auto.open {
+  background-color: #dbeafe;
+  color: #2563eb;
 }
