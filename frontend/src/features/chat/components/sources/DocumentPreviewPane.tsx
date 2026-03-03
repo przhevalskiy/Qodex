@@ -23,9 +23,10 @@ export function DocumentPreviewPane({
   const { isFormatting, isLoading, setFormatting } = useDocumentPreviewStore();
   const contentRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to highlighted chunk when it changes
+  // Auto-scroll to highlighted chunk when it changes or when formatted content loads
   useEffect(() => {
     if (!highlightedChunk || !contentRef.current) return;
+    if (formattedMap.size === 0) return;
 
     const timer = setTimeout(() => {
       const el = contentRef.current?.querySelector(
@@ -37,7 +38,7 @@ export function DocumentPreviewPane({
     }, 100);
 
     return () => clearTimeout(timer);
-  }, [highlightedChunk]);
+  }, [highlightedChunk, formattedMap]);
 
   const documentId = documentContent?.id;
   const chunks = documentContent?.chunks || [];
