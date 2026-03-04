@@ -23,7 +23,7 @@ export function SourcesDisplay({ sources, maxVisible = 3 }: SourcesDisplayProps)
   const hiddenCount = sources.length - maxVisible;
 
   const handleSourceSelect = (source: DocumentSource) => {
-    openDocumentPreview(source.document_id || source.id, source.chunk_id);
+    openDocumentPreview(source.document_id || source.id, source.chunk_id, source.citation_number ?? undefined);
   };
 
   return (
@@ -33,7 +33,7 @@ export function SourcesDisplay({ sources, maxVisible = 3 }: SourcesDisplayProps)
           <DocumentChip
             key={source.chunk_id || `${source.id}-${source.citation_number}`}
             source={source}
-            onClick={() => openDocumentPreview(source.document_id || source.id, source.chunk_id)}
+            onClick={() => openDocumentPreview(source.document_id || source.id, source.chunk_id, source.citation_number ?? undefined)}
           />
         ))}
 

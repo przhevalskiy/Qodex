@@ -7,6 +7,7 @@ interface DocumentPreviewState {
   documentContent: any;
   documentChunks: any[];
   highlightedChunk: string | null;
+  citationNumber: number | null;
   isLoading: boolean;
   isFormatting: boolean;
   error: string | null;
@@ -16,7 +17,7 @@ interface DocumentPreviewState {
 }
 
 interface DocumentPreviewActions {
-  openDocumentPreview: (documentId: string, chunkId?: string) => Promise<void>;
+  openDocumentPreview: (documentId: string, chunkId?: string, citationNumber?: number) => Promise<void>;
   closeDocumentPreview: () => void;
   highlightChunk: (chunkId: string) => void;
   clearHighlight: () => void;
@@ -34,6 +35,7 @@ export const useDocumentPreviewStore = create<DocumentPreviewStore>((set, get) =
   documentContent: null,
   documentChunks: [],
   highlightedChunk: null,
+  citationNumber: null,
   isLoading: false,
   isFormatting: false,
   error: null,
@@ -42,8 +44,8 @@ export const useDocumentPreviewStore = create<DocumentPreviewStore>((set, get) =
   documentChatContent: '',
 
   // Actions
-  openDocumentPreview: async (documentId: string, chunkId?: string) => {
-    set({ isLoading: true, error: null, documentChatMessages: [], documentChatContent: '' });
+  openDocumentPreview: async (documentId: string, chunkId?: string, citationNumber?: number) => {
+    set({ isLoading: true, error: null, documentChatMessages: [], documentChatContent: '', citationNumber: citationNumber ?? null });
 
     try {
       // Get document metadata first — sets previewDocument so modal mounts
@@ -80,6 +82,7 @@ export const useDocumentPreviewStore = create<DocumentPreviewStore>((set, get) =
       documentContent: null,
       documentChunks: [],
       highlightedChunk: null,
+      citationNumber: null,
       isFormatting: false,
       error: null,
       documentChatMessages: [],

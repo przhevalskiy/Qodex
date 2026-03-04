@@ -12,6 +12,7 @@ export function DocumentPreviewModal() {
     previewDocument,
     documentContent,
     highlightedChunk,
+    citationNumber,
     isLoading,
     isFormatting,
     error,
@@ -61,7 +62,14 @@ export function DocumentPreviewModal() {
     <Modal
       isOpen={!!previewDocument}
       onClose={handleClose}
-      title={previewDocument.filename}
+      title={
+        <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {citationNumber != null && (
+            <span className="document-chip-citation">[{citationNumber}]</span>
+          )}
+          {previewDocument.filename}
+        </span>
+      }
       size="xl"
     >
       <div className="document-preview-modal">
