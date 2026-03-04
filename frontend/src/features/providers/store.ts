@@ -89,7 +89,7 @@ export const useProviderStore = create<ProviderStore>()(
     }),
     {
       name: 'qodex-provider-store',
-      partialize: (state) => ({ activeProvider: state.activeProvider }),
+      partialize: () => ({}),
     }
   )
 );
