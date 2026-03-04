@@ -13,14 +13,15 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 
-# L1: in-memory cache — fastest path, wiped on server restart
-_format_cache: dict[str, list[dict]] = {}
+# L1: in-memory cache — {document_id: {chunk_id: formatted_content}}
+# Wiped on server restart; keyed by chunk_id so partial sets are still usable.
+_format_cache: dict[str, dict[str, str]] = {}
 
 
-# ── Supabase persistence helpers (L2 cache) ───────────────────────────────────
+# ── Supabase singleton (L2 cache) ─────────────────────────────────────────────
 
-def _get_supabase_client():
-    """Return an authenticated Supabase client, or None if not configured."""
+def _init_supabase_client():
+    """Create a Supabase client once at module load time, or return None if not configured."""
     try:
         from app.core.config import get_settings
         from supabase import create_client
@@ -31,24 +32,25 @@ def _get_supabase_client():
     except Exception:
         return None
 
+_supabase = _init_supabase_client()
 
-async def _get_formatted_from_db(document_id: str) -> Optional[List[dict]]:
+
+async def _get_formatted_from_db(document_id: str) -> Optional[dict[str, str]]:
     """
     Fetch persisted formatted chunks from Supabase for a given document.
-    Returns a list of {id, content} dicts ordered by chunk_id, or None if not found.
+    Returns a dict of {chunk_id: formatted_content}, or None if not found.
     """
+    if not _supabase:
+        return None
     try:
-        client = _get_supabase_client()
-        if not client:
-            return None
-        response = client.table("document_formatted_chunks") \
+        response = _supabase.table("document_formatted_chunks") \
             .select("chunk_id, formatted_content") \
             .eq("document_id", document_id) \
             .execute()
         rows = response.data
         if not rows:
             return None
-        return [{"id": row["chunk_id"], "content": row["formatted_content"]} for row in rows]
+        return {row["chunk_id"]: row["formatted_content"] for row in rows}
     except Exception as e:
         logger.warning("Failed to read formatted chunks from Supabase: %s", e)
         return None
@@ -59,10 +61,9 @@ async def _save_formatted_to_db(document_id: str, results: list[dict]) -> None:
     Upsert formatted chunks into Supabase.
     Safe to call multiple times — unique constraint on (document_id, chunk_id).
     """
+    if not _supabase:
+        return
     try:
-        client = _get_supabase_client()
-        if not client:
-            return
         rows = [
             {
                 "document_id": document_id,
@@ -71,7 +72,7 @@ async def _save_formatted_to_db(document_id: str, results: list[dict]) -> None:
             }
             for r in results
         ]
-        client.table("document_formatted_chunks") \
+        _supabase.table("document_formatted_chunks") \
             .upsert(rows, on_conflict="document_id,chunk_id") \
             .execute()
     except Exception as e:
@@ -316,10 +317,10 @@ async def _format_one_chunk(client, chunk: FormatChunk) -> dict:
         return {"id": chunk.id, "content": chunk.content}
 
 
-async def _run_format_and_persist(document_id: str, chunks: List[FormatChunk]) -> List[dict]:
+async def _run_format_and_persist(document_id: str, chunks: List[FormatChunk]) -> list[dict]:
     """
     Core formatting logic: call GPT-4o-mini on all chunks in parallel,
-    persist results to Supabase (L2), and populate in-memory cache (L1).
+    persist results to Supabase (L2), and merge into in-memory cache (L1).
     Called both from the endpoint (inline) and as a background task at upload time.
     """
     from openai import AsyncOpenAI
@@ -328,7 +329,7 @@ async def _run_format_and_persist(document_id: str, chunks: List[FormatChunk]) -
     settings = get_settings()
     if not settings.openai_api_key:
         results = [{"id": c.id, "content": c.content} for c in chunks]
-        _format_cache[document_id] = results
+        _format_cache.setdefault(document_id, {}).update({r["id"]: r["content"] for r in results})
         return results
 
     client = AsyncOpenAI(api_key=settings.openai_api_key)
@@ -339,11 +340,12 @@ async def _run_format_and_persist(document_id: str, chunks: List[FormatChunk]) -
             return await _format_one_chunk(client, chunk)
 
     results = await asyncio.gather(*[bounded(c) for c in chunks])
+    results = list(results)
 
-    # Persist to L2 (Supabase) then warm L1
-    await _save_formatted_to_db(document_id, list(results))
-    _format_cache[document_id] = list(results)
-    return list(results)
+    # Persist to L2, then merge into L1 (never overwrite existing cached chunks)
+    await _save_formatted_to_db(document_id, results)
+    _format_cache.setdefault(document_id, {}).update({r["id"]: r["content"] for r in results})
+    return results
 
 
 @router.post("/{document_id}/format-preview")
@@ -352,23 +354,32 @@ async def format_document_preview(document_id: str, request: FormatPreviewReques
     Return AI-formatted chunk content for document preview.
 
     Cache hierarchy:
-      L1 — in-memory dict (fastest, reset on restart)
+      L1 — in-memory dict keyed by chunk_id (fastest, reset on restart)
       L2 — Supabase document_formatted_chunks table (persistent across restarts)
-      L3 — GPT-4o-mini live generation (fallback, result is persisted to L1+L2)
+      L3 — GPT-4o-mini live generation for any chunks missing from L1+L2
     """
-    # L1: in-memory
-    if document_id in _format_cache:
-        return {"formatted": _format_cache[document_id]}
+    requested_ids = [c.id for c in request.chunks]
 
-    # L2: Supabase persistent cache
-    db_results = await _get_formatted_from_db(document_id)
-    if db_results and len(db_results) == len(request.chunks):
-        _format_cache[document_id] = db_results  # warm L1
-        return {"formatted": db_results}
+    # L1: check if all requested chunks are already in memory
+    l1 = _format_cache.get(document_id, {})
+    if l1 and all(cid in l1 for cid in requested_ids):
+        return {"formatted": [{"id": cid, "content": l1[cid]} for cid in requested_ids]}
 
-    # L3: live GPT-4o-mini generation → persists to L1 + L2
-    results = await _run_format_and_persist(document_id, request.chunks)
-    return {"formatted": results}
+    # L2: fetch full document cache from Supabase, warm L1, serve hits
+    db_cache = await _get_formatted_from_db(document_id)
+    if db_cache:
+        _format_cache.setdefault(document_id, {}).update(db_cache)
+        l1 = _format_cache[document_id]
+        missing = [c for c in request.chunks if c.id not in l1]
+        if not missing:
+            return {"formatted": [{"id": cid, "content": l1[cid]} for cid in requested_ids]}
+    else:
+        missing = request.chunks
+
+    # L3: generate only the missing chunks, merge into L1 + L2
+    new_results = await _run_format_and_persist(document_id, missing)
+    l1 = _format_cache.get(document_id, {})
+    return {"formatted": [{"id": cid, "content": l1.get(cid, "")} for cid in requested_ids]}
 
 
 class DocumentChatRequest(BaseModel):
