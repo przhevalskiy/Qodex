@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { SquarePen, MessageSquare, Settings, User, Trash2, PanelLeftClose, PanelLeft, MoreVertical, MoreHorizontal, ArrowUpDown, Download, Check, Copy, LogOut, Sparkles, Compass, GraduationCap, Mail, Globe, ChevronRight, Menu, X } from 'lucide-react';
 import { getAvatarIcon } from '@/shared/constants/avatarIcons';
@@ -511,14 +512,19 @@ interface ConversationItemProps {
 
 function ConversationItem({ discussion, isActive, onSelect, onDelete, onActivate, isCollapsed }: ConversationItemProps) {
   const [showMenu, setShowMenu] = useState(false);
+  const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({});
   const [copied, setCopied] = useState(false);
+  const btnRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const title = discussion.title || discussion.messages[0]?.content.slice(0, 30) || 'New conversation';
 
   // Close menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+      if (
+        btnRef.current && !btnRef.current.contains(event.target as Node) &&
+        menuRef.current && !menuRef.current.contains(event.target as Node)
+      ) {
         setShowMenu(false);
       }
     };
@@ -552,6 +558,19 @@ function ConversationItem({ discussion, isActive, onSelect, onDelete, onActivate
     setShowMenu(false);
   };
 
+  const handleMenuToggle = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!btnRef.current) return;
+    const rect = btnRef.current.getBoundingClientRect();
+    setMenuStyle({
+      position: 'fixed',
+      top: rect.bottom + 4,
+      right: window.innerWidth - rect.right,
+      zIndex: 9999,
+    });
+    setShowMenu(!showMenu);
+  };
+
   return (
     <div
       className={`conversation-item ${isActive ? 'active' : ''}`}
@@ -562,18 +581,16 @@ function ConversationItem({ discussion, isActive, onSelect, onDelete, onActivate
       ) : (
         <>
           <span className="conversation-item-title">{title}</span>
-          <div className="conversation-item-menu-container" ref={menuRef}>
+          <div className="conversation-item-menu-container">
             <button
+              ref={btnRef}
               className="conversation-item-menu-btn"
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowMenu(!showMenu);
-              }}
+              onClick={handleMenuToggle}
             >
               <MoreVertical size={14} />
             </button>
-            {showMenu && (
-              <div className="conversation-menu">
+            {showMenu && createPortal(
+              <div ref={menuRef} className="conversation-menu" style={menuStyle}>
                 <button className="conversation-menu-item" onClick={handleActivate}>
                   <Check size={14} />
                   <span>Activate</span>
@@ -586,7 +603,8 @@ function ConversationItem({ discussion, isActive, onSelect, onDelete, onActivate
                   <Trash2 size={14} />
                   <span>Delete</span>
                 </button>
-              </div>
+              </div>,
+              document.body
             )}
           </div>
         </>

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 interface DropdownItem {
   label: string;
@@ -15,11 +16,16 @@ interface DropdownProps {
 
 export function Dropdown({ trigger, items, align = 'right' }: DropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({});
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (
+        triggerRef.current && !triggerRef.current.contains(event.target as Node) &&
+        menuRef.current && !menuRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
     }
@@ -28,15 +34,27 @@ export function Dropdown({ trigger, items, align = 'right' }: DropdownProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  return (
-    <div className="relative" ref={dropdownRef}>
-      <div onClick={() => setIsOpen(!isOpen)}>{trigger}</div>
+  function handleOpen() {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    setMenuStyle({
+      position: 'fixed',
+      top: rect.bottom + 4,
+      ...(align === 'right' ? { right: window.innerWidth - rect.right } : { left: rect.left }),
+      zIndex: 9999,
+    });
+    setIsOpen(!isOpen);
+  }
 
-      {isOpen && (
+  return (
+    <div ref={triggerRef}>
+      <div onClick={handleOpen}>{trigger}</div>
+
+      {isOpen && createPortal(
         <div
-          className={`absolute top-full z-20 mt-1 min-w-[160px] rounded-xl bg-white border border-border-light py-1.5 shadow-lg animate-fadeIn ${
-            align === 'right' ? 'right-0' : 'left-0'
-          }`}
+          ref={menuRef}
+          style={menuStyle}
+          className="min-w-[160px] rounded-xl bg-white border border-border-light py-1.5 shadow-lg animate-fadeIn"
         >
           {items.map((item, index) => (
             <button
@@ -59,7 +77,8 @@ export function Dropdown({ trigger, items, align = 'right' }: DropdownProps) {
               {item.label}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
