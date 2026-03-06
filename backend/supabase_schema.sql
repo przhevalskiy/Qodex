@@ -17,6 +17,16 @@ CREATE TABLE IF NOT EXISTS document_formatted_chunks (
 
 CREATE INDEX IF NOT EXISTS idx_dfc_document_id ON document_formatted_chunks(document_id);
 
+-- 0b. Document raw content cache
+--     Persists raw Pinecone chunk content so preview opens skip Pinecone
+--     after the first load. Documents are shared (no RLS needed).
+CREATE TABLE IF NOT EXISTS document_raw_cache (
+  document_id   TEXT PRIMARY KEY,
+  full_content  TEXT NOT NULL,
+  chunks        JSONB NOT NULL,
+  created_at    TIMESTAMPTZ DEFAULT now()
+);
+
 -- 1. Profiles table (auto-populated from auth.users)
 CREATE TABLE IF NOT EXISTS profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,

@@ -78,6 +78,39 @@ async def _save_formatted_to_db(document_id: str, results: list[dict]) -> None:
     except Exception as e:
         logger.warning("Failed to save formatted chunks to Supabase: %s", e)
 
+
+async def _get_raw_content_from_db(document_id: str) -> Optional[dict]:
+    """
+    Fetch cached raw document content from Supabase.
+    Returns dict with full_content and chunks, or None on miss.
+    """
+    if not _supabase:
+        return None
+    try:
+        response = _supabase.table("document_raw_cache") \
+            .select("full_content, chunks") \
+            .eq("document_id", document_id) \
+            .single() \
+            .execute()
+        return response.data if response.data else None
+    except Exception:
+        return None
+
+
+async def _save_raw_content_to_db(document_id: str, content: dict) -> None:
+    """Upsert raw document content into Supabase cache."""
+    if not _supabase:
+        return
+    try:
+        _supabase.table("document_raw_cache").upsert({
+            "document_id": document_id,
+            "full_content": content["full_content"],
+            "chunks": content["chunks"],
+        }).execute()
+    except Exception as e:
+        logger.warning("Failed to save raw content to Supabase: %s", e)
+
+
 # Allowed file types
 ALLOWED_CONTENT_TYPES = {
     "application/pdf",
@@ -227,13 +260,27 @@ async def search_documents(request: SearchRequest):
 
 
 @router.get("/{document_id}/content")
-async def get_document_content(document_id: str):
+async def get_document_content(document_id: str, background_tasks: BackgroundTasks):
     """Get full document content with chunks for preview."""
+    from fastapi.responses import JSONResponse
+
+    # L1: check Supabase raw content cache — skip Pinecone if hit
+    cached = await _get_raw_content_from_db(document_id)
+    if cached:
+        return JSONResponse(
+            content={"id": document_id, **cached},
+            headers={"Cache-Control": "private, max-age=3600"},
+        )
+
     doc_service = get_document_service()
-    
     try:
         content = await doc_service.get_document_content(document_id)
-        return content
+        # Persist to Supabase in the background so this response is not delayed
+        background_tasks.add_task(_save_raw_content_to_db, document_id, content)
+        return JSONResponse(
+            content=content,
+            headers={"Cache-Control": "private, max-age=3600"},
+        )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
