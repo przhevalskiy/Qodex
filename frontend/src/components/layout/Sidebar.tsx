@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { SquarePen, MessageSquare, Settings, User, Trash2, PanelLeftClose, PanelLeft, MoreVertical, MoreHorizontal, ArrowUpDown, Download, Check, Copy, LogOut, Sparkles, Compass, GraduationCap, Mail, Globe, ChevronRight, Menu, X } from 'lucide-react';
+import { SquarePen, MessageSquare, Settings, User, Trash2, PanelLeftClose, PanelLeft, MoreVertical, MoreHorizontal, ArrowUpDown, Download, Check, Copy, LogOut, Waypoints, Compass, GraduationCap, Mail, Globe, ChevronRight, Menu, X } from 'lucide-react';
 import { getAvatarIcon } from '@/shared/constants/avatarIcons';
 import { useDiscussionStore } from '@/features/discussions';
 import { useChatStore } from '@/features/chat';
@@ -292,7 +292,7 @@ export function Sidebar() {
               <div className="sidebar-journey-normal">
                 <div className="sidebar-start-journey-container" ref={sampleQuestionsRef}>
                   <button className="sidebar-start-journey-btn" onClick={() => setShowSampleQuestions(!showSampleQuestions)}>
-                    <Sparkles size={16} />
+                    <Waypoints size={16} />
                     <span>Start a new journey</span>
                   </button>
                   <SampleQuestionsDropdown
@@ -311,7 +311,7 @@ export function Sidebar() {
                   className="sidebar-collapsed-sparkle-btn"
                   onClick={() => setShowSampleQuestions(!showSampleQuestions)}
                 >
-                  <Sparkles size={20} />
+                  <Waypoints size={20} />
                 </button>
                 <SampleQuestionsDropdown
                   isOpen={showSampleQuestions}
