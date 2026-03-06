@@ -582,6 +582,12 @@ async def stream_chat(
         else:
             context = attachment_context
 
+    # Collect image attachments for vision API injection
+    image_attachments = attachment_service.get_image_attachments_for_chat(
+        discussion_id=request.discussion_id,
+        attachment_ids=request.attachment_ids,
+    )
+
     # Create streaming response
     async def generate():
         """Generate SSE events from provider stream."""
@@ -624,6 +630,7 @@ async def stream_chat(
                 max_tokens=request.max_tokens,
                 intent_prompt=intent_result.prompt_suffix,
                 research_prompt=research_config.prompt_enhancement,
+                image_attachments=image_attachments or None,
             ):
                 full_response.append(chunk)
                 yield chunk

@@ -25,6 +25,7 @@ class MistralProvider(BaseProvider):
         max_tokens: int = 4096,
         intent_prompt: Optional[str] = None,
         research_prompt: Optional[str] = None,
+        image_attachments: Optional[List[Dict]] = None,
     ) -> AsyncGenerator[str, None]:
         """Stream completion from Mistral."""
         formatted_messages = []
@@ -41,16 +42,18 @@ class MistralProvider(BaseProvider):
                 "- Add [N] citations inline where information comes from source N\n"
                 "- Multiple sources can be cited together like [1][2]\n"
                 "- Be precise - cite at the claim level, not just at the end of paragraphs\n"
-                "- Natural placement - citations should feel unobtrusive\n\n"
-                "CRITICAL — Entity verification:\n"
-                "- Before answering, check: does the user's question reference a specific person, course, or entity?\n"
-                "- If YES: verify that at least one source ACTUALLY MENTIONS that person/entity by name\n"
-                "- If NO source mentions the specific person/entity the user asked about, you MUST say so clearly — "
-                "do NOT construct an answer by inferring from unrelated sources\n"
-                "- Do NOT say 'while not directly mentioned, we can infer...' — that IS hallucination\n"
-                "- ONLY use sources that explicitly contain information about the queried topic\n"
-                "- Do NOT reuse specific facts from earlier responses — they came from different sources\n"
-                "- Base ALL factual statements on the current sources listed above\n\n"
+                "- Natural placement - citations should feel unobtrusive\n"
+                "- Cite from ALL sources that contain relevant information — do not omit retrieved sources that support the answer\n\n"
+                "INFERENCE POLICY — Two tiers:\n"
+                "Tier 1 — Grounded facts (inference prohibited): All factual claims must come directly from retrieved sources. "
+                "If no source explicitly covers the queried entity or topic, state that gap clearly — do not construct an answer to fulfill the request.\n"
+                "Tier 2 — Causal bridge inference (permitted, must be labeled): If sources contain related material with meaningful "
+                "conceptual overlap to the query, you MAY draw explicit causal connections — clearly marked as inference with the "
+                "reasoning chain shown. E.g., 'The sources don't directly cover X, but do address Y which shares [specific traits] "
+                "with X — suggesting [connection].' This bridges concepts; it does not fill gaps on demand.\n"
+                "- Never present bridge inference as established fact\n"
+                "- Never use inference to answer a direct factual query the sources don't support\n"
+                "- Do NOT reuse specific facts, names, or claims from your earlier responses — base all claims on current sources above\n\n"
                 "Now provide an accurate and helpful response with inline citations."
             )
 
@@ -74,6 +77,18 @@ class MistralProvider(BaseProvider):
                     "role": msg.role.value,
                     "content": msg.content
                 })
+
+        # Inject image attachments as vision content blocks into the last user message
+        if image_attachments:
+            last = formatted_messages[-1] if formatted_messages else None
+            if last and last["role"] == "user":
+                content_blocks = [{"type": "text", "text": last["content"]}]
+                for img in image_attachments:
+                    content_blocks.append({
+                        "type": "image_url",
+                        "image_url": f"data:{img['media_type']};base64,{img['base64']}",
+                    })
+                formatted_messages[-1] = {"role": "user", "content": content_blocks}
 
         async_response = await self.client.chat.stream_async(
             model=self.model,

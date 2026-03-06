@@ -15,9 +15,12 @@ ALLOWED_CONTENT_TYPES = {
     "text/plain",
     "text/markdown",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "image/jpeg",
+    "image/png",
+    "image/webp",
 }
 
-ALLOWED_EXTENSIONS = {".pdf", ".txt", ".md", ".docx"}
+ALLOWED_EXTENSIONS = {".pdf", ".txt", ".md", ".docx", ".jpg", ".jpeg", ".png", ".webp"}
 
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
@@ -82,6 +85,8 @@ async def get_attachment(discussion_id: str, attachment_id: str, _user_id: str =
         "file_size": attachment.file_size,
         "chunk_count": attachment.chunk_count,
         "created_at": attachment.created_at.isoformat(),
+        "is_image": attachment.is_image,
+        "image_data": attachment.image_data,
         "full_text": attachment.full_text,
         "chunks": [
             {

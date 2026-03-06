@@ -28,6 +28,8 @@ class Attachment(BaseModel):
     full_text: str = ""
     chunks: List[AttachmentChunk] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    is_image: bool = False
+    image_data: Optional[str] = None  # base64-encoded bytes for image attachments
 
     class Config:
         from_attributes = True
@@ -42,6 +44,7 @@ class AttachmentSummary(BaseModel):
     file_size: int
     chunk_count: int
     created_at: datetime
+    is_image: bool = False
 
     @classmethod
     def from_attachment(cls, attachment: Attachment) -> "AttachmentSummary":
@@ -53,4 +56,5 @@ class AttachmentSummary(BaseModel):
             file_size=attachment.file_size,
             chunk_count=attachment.chunk_count,
             created_at=attachment.created_at,
+            is_image=attachment.is_image,
         )

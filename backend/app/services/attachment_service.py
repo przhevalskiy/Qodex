@@ -1,11 +1,15 @@
 from typing import List, Optional, Dict
 import uuid
+import base64
 import logging
 
 from app.models.attachment import Attachment, AttachmentChunk, AttachmentSummary
 from app.services.document_service import get_document_service
 
 logger = logging.getLogger(__name__)
+
+IMAGE_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp"}
+IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 
 
 class AttachmentService:
@@ -32,42 +36,54 @@ class AttachmentService:
         content_type: str,
     ) -> Attachment:
         """Process a file and store it as a discussion attachment (no Pinecone)."""
-        ds = self._doc_service()
-
-        # Extract text using the shared pipeline
-        full_text = ds._extract_text(content, content_type, filename)
-
-        # Chunk the text using the shared pipeline
-        raw_chunks = ds._chunk_text(full_text)
-
         attachment_id = str(uuid.uuid4())
+        ext = "." + filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
 
-        chunks = [
-            AttachmentChunk(
-                attachment_id=attachment_id,
-                content=c["content"],
-                chunk_index=i,
-                content_type=c["type"],
+        if content_type in IMAGE_CONTENT_TYPES or ext in IMAGE_EXTENSIONS:
+            # Image path: skip text extraction; store raw bytes as base64
+            attachment = Attachment(
+                id=attachment_id,
+                discussion_id=discussion_id,
+                filename=filename,
+                file_content_type=content_type,
+                file_size=len(content),
+                is_image=True,
+                image_data=base64.b64encode(content).decode(),
+                full_text="",
+                chunks=[],
+                chunk_count=0,
             )
-            for i, c in enumerate(raw_chunks)
-        ]
-
-        attachment = Attachment(
-            id=attachment_id,
-            discussion_id=discussion_id,
-            filename=filename,
-            file_content_type=content_type,
-            file_size=len(content),
-            chunk_count=len(chunks),
-            full_text=full_text,
-            chunks=chunks,
-        )
+        else:
+            # Text path: extract and chunk via shared DocumentService pipeline
+            ds = self._doc_service()
+            full_text = ds._extract_text(content, content_type, filename)
+            raw_chunks = ds._chunk_text(full_text)
+            chunks = [
+                AttachmentChunk(
+                    attachment_id=attachment_id,
+                    content=c["content"],
+                    chunk_index=i,
+                    content_type=c["type"],
+                )
+                for i, c in enumerate(raw_chunks)
+            ]
+            attachment = Attachment(
+                id=attachment_id,
+                discussion_id=discussion_id,
+                filename=filename,
+                file_content_type=content_type,
+                file_size=len(content),
+                chunk_count=len(chunks),
+                full_text=full_text,
+                chunks=chunks,
+            )
 
         self._attachments.setdefault(discussion_id, {})[attachment_id] = attachment
         logger.info(
-            "Attachment added: %s (%d chunks) to discussion %s",
+            "Attachment added: %s (%s, %d chunks) to discussion %s",
             filename,
-            len(chunks),
+            "image" if attachment.is_image else "text",
+            attachment.chunk_count,
             discussion_id,
         )
         return attachment
@@ -118,9 +134,35 @@ class AttachmentService:
 
         parts = []
         for att in attachments:
-            parts.append(f"[Attached File: {att.filename}]:\n{att.full_text}")
+            if not att.is_image and att.full_text:
+                parts.append(f"[Attached File: {att.filename}]:\n{att.full_text}")
 
         return "\n\n---\n\n".join(parts)
+
+    def get_image_attachments_for_chat(
+        self,
+        discussion_id: str,
+        attachment_ids: Optional[List[str]] = None,
+    ) -> List[Dict]:
+        """Return image attachments as dicts suitable for vision API injection.
+
+        Returns:
+            List of {base64, media_type, filename} for each image attachment.
+        """
+        bucket = self._attachments.get(discussion_id, {})
+        if not bucket:
+            return []
+
+        ids = attachment_ids if attachment_ids is not None else list(bucket)
+        return [
+            {
+                "base64": bucket[aid].image_data,
+                "media_type": bucket[aid].file_content_type,
+                "filename": bucket[aid].filename,
+            }
+            for aid in ids
+            if aid in bucket and bucket[aid].is_image and bucket[aid].image_data
+        ]
 
     def delete_discussion_attachments(self, discussion_id: str) -> int:
         """Remove all attachments for a discussion. Returns count deleted."""
