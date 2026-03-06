@@ -64,6 +64,10 @@
   margin: 0;
 }
 
+.modal-header .modal-title .document-chip-citation {
+  font-size: 15px;
+}
+
 .modal-close-btn {
   padding: 6px;
   border-radius: 6px;
