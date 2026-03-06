@@ -48,13 +48,4 @@ export const SAMPLE_QUESTIONS: SampleQuestion[] = [
       { text: "Describe scope 1, 2, and 3 emissions" }
     ]
   },
-  {
-    main: "Compare approaches across my course materials",
-    subQuestions: [
-      { text: "How do different syllabi teach climate risk?" },
-      { text: "Compare pedagogical methods used" },
-      { text: "Contrast quantitative vs. qualitative approaches" },
-      { text: "What frameworks are referenced most?" }
-    ]
-  }
 ];
