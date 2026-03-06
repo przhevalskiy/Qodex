@@ -44,7 +44,9 @@ INTENT_DEFINITIONS = [
             "- What does this mean for climate policy, education, or practice?\n"
             "### Limitations\n"
             "- Note any caveats, gaps, or scope boundaries\n\n"
-            "Use precise language. Distinguish between evidence-backed claims and interpretive statements."
+            "Use precise language. Distinguish between evidence-backed claims and interpretive statements.\n\n"
+            "Apply the inference policy: ground all factual claims in retrieved sources; "
+            "state any gaps clearly; label causal bridge connections explicitly rather than presenting them as established fact."
         ),
     },
     {
@@ -70,7 +72,9 @@ INTENT_DEFINITIONS = [
             "- Use short paragraphs (2-3 sentences max)\n"
             "- Highlight cause-and-effect relationships explicitly\n"
             "- End with a 'Key Takeaway' sentence that captures the core idea\n\n"
-            "Avoid jargon without explanation. If a term is domain-specific, explain it."
+            "Avoid jargon without explanation. If a term is domain-specific, explain it.\n\n"
+            "Apply the inference policy: ground all factual claims in retrieved sources; "
+            "state any gaps clearly; label causal bridge connections explicitly rather than presenting them as established fact."
         ),
     },
     {
@@ -97,7 +101,9 @@ INTENT_DEFINITIONS = [
             "### Synthesis\n"
             "- What patterns emerge? Where do they converge or diverge?\n"
             "- What are the practical implications of these differences?\n\n"
-            "Be balanced — present each perspective with equal rigor."
+            "Be balanced — present each perspective with equal rigor.\n\n"
+            "Apply the inference policy: ground all factual claims in retrieved sources; "
+            "state any gaps clearly; label causal bridge connections explicitly rather than presenting them as established fact."
         ),
     },
     {
@@ -128,7 +134,9 @@ INTENT_DEFINITIONS = [
             "- What happened? What were the results or lessons learned?\n"
             "### Discussion Questions\n"
             "- Pose 2-3 questions suitable for classroom discussion\n\n"
-            "Ground all claims in the source material. Flag any inferences clearly."
+            "Ground all claims in the source material. Flag any inferences clearly.\n\n"
+            "Apply the inference policy: ground all factual claims in retrieved sources; "
+            "state any gaps clearly; label causal bridge connections explicitly rather than presenting them as established fact."
         ),
     },
     {
@@ -157,7 +165,9 @@ INTENT_DEFINITIONS = [
             "### Answer Key\n"
             "- Provide concise model answers or key points for each question\n\n"
             "Questions should be specific to the source content, not generic. "
-            "Include the cognitive level label in parentheses after each question."
+            "Include the cognitive level label in parentheses after each question.\n\n"
+            "Apply the inference policy: ground all factual claims in retrieved sources; "
+            "state any gaps clearly; label causal bridge connections explicitly rather than presenting them as established fact."
         ),
     },
     {
@@ -188,7 +198,9 @@ INTENT_DEFINITIONS = [
             "### Overall Assessment\n"
             "- Weigh the strengths against weaknesses\n"
             "- How should a reader calibrate their confidence in the claims?\n\n"
-            "Distinguish between factual gaps and interpretive disagreements."
+            "Distinguish between factual gaps and interpretive disagreements.\n\n"
+            "Apply the inference policy: ground all factual claims in retrieved sources; "
+            "state any gaps clearly; label causal bridge connections explicitly rather than presenting them as established fact."
         ),
     },
     {
@@ -215,7 +227,9 @@ INTENT_DEFINITIONS = [
             "- How was the data analyzed? What tools or frameworks were applied?\n"
             "### Validity & Reliability\n"
             "- How robust is the methodology? Any concerns about generalizability?\n\n"
-            "Be specific about what the sources actually describe vs. what you are inferring."
+            "Be specific about what the sources actually describe vs. what you are inferring.\n\n"
+            "Apply the inference policy: ground all factual claims in retrieved sources; "
+            "state any gaps clearly; label causal bridge connections explicitly rather than presenting them as established fact."
         ),
     },
     {
@@ -249,7 +263,9 @@ INTENT_DEFINITIONS = [
             "- How could instructors evaluate student understanding?\n"
             "### Recommended Readings\n"
             "- Reference relevant sources from the documents\n\n"
-            "Target a graduate-level audience unless otherwise specified."
+            "Target a graduate-level audience unless otherwise specified.\n\n"
+            "Apply the inference policy: ground all factual claims in retrieved sources; "
+            "state any gaps clearly; label causal bridge connections explicitly rather than presenting them as established fact."
         ),
     },
 ]
@@ -352,7 +368,9 @@ def classify_intent(message: str, has_attachments: bool = False) -> IntentResult
             "- End with a brief synthesis or actionable insight\n\n"
             "Do NOT use section headers like 'Direct Answer' or 'Key Takeaway' in your response.\n\n"
             "Adapt depth to the complexity of the question. Simple questions deserve concise answers; "
-            "complex questions warrant thorough exploration. Always ground claims in source material."
+            "complex questions warrant thorough exploration. Always ground claims in source material.\n\n"
+            "Apply the inference policy: ground all factual claims in retrieved sources; "
+            "state any gaps clearly; label causal bridge connections explicitly rather than presenting them as established fact."
         ),
         use_knowledge_base=use_kb,
     )
