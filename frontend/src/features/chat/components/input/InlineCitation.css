@@ -149,6 +149,32 @@
   font-weight: 500;
 }
 
+.citation-source-row {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  margin-top: 4px;
+}
+
+.citation-source-chip {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--brand-600, #2563eb);
+  background-color: var(--brand-50, #eff6ff);
+  padding: 1px 5px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.citation-source-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gray-700, #374151);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* Mobile responsiveness */
 @media (max-width: 768px) {
   .citation-tooltip {
