@@ -87,6 +87,7 @@ async def _get_content_from_format_cache(document_id: str) -> Optional[list]:
     Chunk index is derived from the chunk_id suffix (format: {document_id}_{index}).
     """
     if not _supabase:
+        logger.warning("PREVIEW CACHE: Supabase client is None — check SUPABASE_URL/SUPABASE_KEY env vars")
         return None
     try:
         response = _supabase.table("document_formatted_chunks") \
@@ -95,7 +96,9 @@ async def _get_content_from_format_cache(document_id: str) -> Optional[list]:
             .execute()
         rows = response.data
         if not rows:
+            logger.info("PREVIEW CACHE MISS: no format cache entries for %s", document_id)
             return None
+        logger.info("PREVIEW CACHE HIT: %d chunks from format cache for %s", len(rows), document_id)
         chunks = []
         for row in rows:
             chunk_id = row["chunk_id"]
@@ -110,7 +113,8 @@ async def _get_content_from_format_cache(document_id: str) -> Optional[list]:
                 "content_type": "paragraph",
             })
         return sorted(chunks, key=lambda c: c["chunk_index"])
-    except Exception:
+    except Exception as e:
+        logger.warning("PREVIEW CACHE ERROR: %s", e)
         return None
 
 
