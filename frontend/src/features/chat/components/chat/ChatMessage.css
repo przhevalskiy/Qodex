@@ -82,10 +82,6 @@
 
 /* Intent Tooltip */
 .intent-tooltip {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
-  z-index: 100;
   width: 375px;
   background: white;
   border: 1px solid var(--gray-200);
@@ -93,16 +89,12 @@
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
   padding: 14px;
   pointer-events: none;
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(4px);
-  transition: opacity 0.2s ease, visibility 0.2s ease, transform 0.2s ease;
+  animation: intentTooltipFadeIn 0.15s ease-out forwards;
 }
 
-.intent-chip-wrapper:hover .intent-tooltip {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
+@keyframes intentTooltipFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .intent-tooltip-header {
