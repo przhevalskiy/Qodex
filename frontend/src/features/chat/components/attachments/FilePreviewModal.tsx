@@ -1,4 +1,4 @@
-import { X, FileText, Loader2 } from 'lucide-react';
+import { X, FileText, ImageIcon, Loader2 } from 'lucide-react';
 import { useAttachmentStore } from '@/features/attachments/store';
 import { FormattedContent } from '../sources/FormattedContent';
 import './FilePreviewModal.css';
@@ -26,11 +26,12 @@ export function FilePreviewModal() {
           <>
             <div className="file-preview-header">
               <div className="file-preview-title">
-                <FileText size={18} />
+                {previewAttachment.is_image ? <ImageIcon size={18} /> : <FileText size={18} />}
                 <span>{previewAttachment.filename}</span>
               </div>
               <div className="file-preview-meta">
-                {formatSize(previewAttachment.file_size)} &middot; {previewAttachment.chunk_count} chunks
+                {formatSize(previewAttachment.file_size)}
+                {!previewAttachment.is_image && <> &middot; {previewAttachment.chunk_count} chunks</>}
               </div>
               <button onClick={closePreview} className="file-preview-close" type="button">
                 <X size={18} />
@@ -38,7 +39,15 @@ export function FilePreviewModal() {
             </div>
 
             <div className="file-preview-content">
-              <FormattedContent chunks={previewAttachment.chunks} />
+              {previewAttachment.is_image && previewAttachment.image_data ? (
+                <img
+                  src={`data:${previewAttachment.file_content_type};base64,${previewAttachment.image_data}`}
+                  alt={previewAttachment.filename}
+                  style={{ maxWidth: '100%', height: 'auto', display: 'block' }}
+                />
+              ) : (
+                <FormattedContent chunks={previewAttachment.chunks} />
+              )}
             </div>
           </>
         ) : null}

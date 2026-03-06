@@ -156,7 +156,7 @@
   align-items: center;
   gap: 4px;
   padding: 16px;
-  border: 2px dashed var(--border-light);
+  border: 2px dashed #e5e7eb;
   border-radius: 10px;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -165,7 +165,7 @@
 }
 
 .attachment-panel-dropzone:hover {
-  border-color: var(--border-medium);
+  border-color: #d1d5db;
   background: var(--bg-secondary);
 }
 

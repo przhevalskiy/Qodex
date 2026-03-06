@@ -1,14 +1,17 @@
 import { useRef, useState } from 'react';
-import { Paperclip, X, FileText, Upload, Eye, Trash2 } from 'lucide-react';
+import { Paperclip, X, FileText, ImageIcon, Upload, Eye, Trash2 } from 'lucide-react';
 import { useAttachmentStore } from '@/features/attachments/store';
 import './AttachmentPanel.css';
 
-const ALLOWED_EXTENSIONS = ['.pdf', '.txt', '.md', '.docx'];
+const ALLOWED_EXTENSIONS = ['.pdf', '.txt', '.md', '.docx', '.jpg', '.jpeg', '.png', '.webp'];
 const ALLOWED_TYPES = [
   'application/pdf',
   'text/plain',
   'text/markdown',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
 ];
 
 interface AttachmentPanelProps {
@@ -101,7 +104,10 @@ export function AttachmentPanel({ discussionId, isOpen, onClose }: AttachmentPan
           <div className="attachment-panel-list">
             {attachments.map((att) => (
               <div key={att.id} className="attachment-panel-item">
-                <FileText size={16} className="attachment-panel-item-icon" />
+                {att.is_image
+                  ? <ImageIcon size={16} className="attachment-panel-item-icon" />
+                  : <FileText size={16} className="attachment-panel-item-icon" />
+                }
                 <div className="attachment-panel-item-info">
                   <span className="attachment-panel-item-name">{att.filename}</span>
                   <span className="attachment-panel-item-meta">

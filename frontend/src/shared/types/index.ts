@@ -99,6 +99,7 @@ export interface AttachmentSummary {
   file_size: number;
   chunk_count: number;
   created_at: string;
+  is_image?: boolean;
 }
 
 export interface AttachmentChunk {
@@ -116,6 +117,8 @@ export interface AttachmentDetail {
   file_size: number;
   chunk_count: number;
   created_at: string;
+  is_image?: boolean;
+  image_data?: string;
   full_text: string;
   chunks: AttachmentChunk[];
 }

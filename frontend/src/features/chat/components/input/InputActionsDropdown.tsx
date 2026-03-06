@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BadgePlus, Paperclip, X, FileText, Upload, Check } from 'lucide-react';
+import { BadgePlus, Paperclip, X, FileText, ImageIcon, Upload, Check } from 'lucide-react';
 import { useAttachmentStore } from '@/features/attachments/store';
 import { useDiscussionStore } from '@/features/discussions';
 import { useResearchModeStore, RESEARCH_MODE_UI } from '@/features/research';
@@ -12,9 +12,12 @@ const ALLOWED_TYPES = [
   'text/plain',
   'text/markdown',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
 ];
 
-const ALLOWED_EXTENSIONS = ['.pdf', '.txt', '.md', '.docx'];
+const ALLOWED_EXTENSIONS = ['.pdf', '.txt', '.md', '.docx', '.jpg', '.jpeg', '.png', '.webp'];
 
 export function InputActionsDropdown() {
   const navigate = useNavigate();
@@ -202,7 +205,7 @@ export function InputActionsDropdown() {
             <div className="input-actions-documents-list">
               {attachments.map((att) => (
                 <div key={att.id} className="input-actions-doc-item selected">
-                  <FileText size={16} />
+                  {att.is_image ? <ImageIcon size={16} /> : <FileText size={16} />}
                   <span className="input-actions-doc-name">{att.filename}</span>
                   <button onClick={() => handleDeleteAttachment(att.id)} type="button">
                     <X size={14} />
