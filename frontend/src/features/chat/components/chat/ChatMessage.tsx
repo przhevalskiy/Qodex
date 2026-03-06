@@ -245,10 +245,9 @@ const markdownComponents = {
   h4({ children }: { children?: React.ReactNode }) {
     return <h4>{children}</h4>;
   },
-  // Custom citation component handler
-  citation({ number }: { number: number }) {
-    // This will be replaced dynamically with sources
-    return <span data-citation={number}>[{number}]</span>;
+  // Suppress citations when no sources are available (safety net for hallucinated numbers)
+  citation() {
+    return null;
   },
 };
 
@@ -278,6 +277,7 @@ export const ChatMessage = memo(function ChatMessage({ message, isStreaming, onR
       ...markdownComponents,
       citation({ number }: { number: number }) {
         const source = message.sources?.find(s => s.citation_number === number);
+        if (!source) return null; // suppress hallucinated citation numbers
         return (
           <InlineCitation
             number={number}

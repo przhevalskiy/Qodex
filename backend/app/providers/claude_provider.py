@@ -40,6 +40,8 @@ class ClaudeProvider(BaseProvider):
                 "[Sources for reference]\n"
                 f"{context}\n\n"
                 "Guidelines:\n"
+                "- ONLY use citation numbers that match the [Source N] headers listed above\n"
+                "- Do NOT use numbered references found inside the source documents (e.g. bibliographies, footnotes like [31] or [54]) — those are internal to the documents, not valid citation numbers\n"
                 "- Add [N] citations inline where information comes from source N\n"
                 "- Multiple sources can be cited together like [1][2]\n"
                 "- Be precise - cite at the claim level, not just at the end of paragraphs\n"
