@@ -5,7 +5,8 @@ import { Copy, Check, Download, Loader2, RotateCcw } from 'lucide-react';
 import ExportDropdown from '../ui/ExportDropdown';
 import { getAvatarIcon } from '@/shared/constants/avatarIcons';
 import { Message, DocumentSource } from '@/shared/types';
-import { useState, useMemo, memo } from 'react';
+import { useState, useMemo, memo, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuthStore } from '@/features/auth';
 import { SourcesDisplay } from '../sources/SourcesDisplay';
 import { SuggestedQuestions } from '../ui/SuggestedQuestions';
@@ -245,8 +246,9 @@ const markdownComponents = {
   h4({ children }: { children?: React.ReactNode }) {
     return <h4>{children}</h4>;
   },
-  // Suppress citations when no sources are available (safety net for hallucinated numbers)
-  citation() {
+  // Suppress numeric citations when no sources available; still render [AI] chips
+  citation({ number, ai }: { number?: number; ai?: string; aiSources?: string }) {
+    if (ai) return <InlineCitation ai={true} />;
     return null;
   },
 };
@@ -259,6 +261,25 @@ export const ChatMessage = memo(function ChatMessage({ message, isStreaming, onR
   const AvatarIcon = getAvatarIcon(useAuthStore((s) => s.user?.user_metadata?.avatar_icon));
   const [copied, setCopied] = useState(false);
   const [retrying, setRetrying] = useState(false);
+  const [showIntentTooltip, setShowIntentTooltip] = useState(false);
+  const [intentTooltipStyle, setIntentTooltipStyle] = useState<React.CSSProperties>({});
+  const intentChipRef = useRef<HTMLSpanElement>(null);
+
+  const handleIntentMouseEnter = useCallback(() => {
+    if (!intentChipRef.current) return;
+    const rect = intentChipRef.current.getBoundingClientRect();
+    setIntentTooltipStyle({
+      position: 'fixed',
+      top: rect.bottom + 8,
+      left: rect.left,
+      zIndex: 9999,
+    });
+    setShowIntentTooltip(true);
+  }, []);
+
+  const handleIntentMouseLeave = useCallback(() => {
+    setShowIntentTooltip(false);
+  }, []);
 
   // Skip expensive emoji processing during streaming — AnimatedMarkdown uses raw content
   const processedContent = useMemo(
@@ -275,7 +296,12 @@ export const ChatMessage = memo(function ChatMessage({ message, isStreaming, onR
     // Return components with custom citation handler
     return {
       ...markdownComponents,
-      citation({ number }: { number: number }) {
+      citation({ number, ai, aiSources }: { number?: number; ai?: string; aiSources?: string }) {
+        if (ai) {
+          const nums = aiSources ? aiSources.split(',').map(n => parseInt(n.trim(), 10)).filter(Boolean) : [];
+          const resolved = nums.map(n => message.sources?.find(s => s.citation_number === n)).filter(Boolean) as DocumentSource[];
+          return <InlineCitation ai={true} resolvedAiSources={resolved} />;
+        }
         const source = message.sources?.find(s => s.citation_number === number);
         if (!source) return null; // suppress hallucinated citation numbers
         return (
@@ -315,34 +341,42 @@ export const ChatMessage = memo(function ChatMessage({ message, isStreaming, onR
         <div className="message-header">
           <span className="message-author">{isUser ? displayName : 'Qodex'}</span>
           {!isUser && message.intent && (
-            <span className="intent-chip-wrapper">
+            <span
+              ref={intentChipRef}
+              className="intent-chip-wrapper"
+              onMouseEnter={handleIntentMouseEnter}
+              onMouseLeave={handleIntentMouseLeave}
+            >
               <span className={`message-intent ${message.intent}`}>
                 {intentLabels[message.intent] || message.intent}
               </span>
-              <div className="intent-tooltip">
-                <div className="intent-tooltip-header">
-                  <span className={`intent-tooltip-active ${message.intent}`}>
-                    {intentLabels[message.intent] || message.intent}
-                  </span>
-                  <span className="intent-tooltip-desc">
-                    {intentDescriptions[message.intent] || ''}
-                  </span>
-                </div>
-                <div className="intent-tooltip-divider" />
-                <div className="intent-tooltip-label">All response modes</div>
-                <div className="intent-tooltip-list">
-                  {allIntents.map((item) => (
-                    <div
-                      key={item.key}
-                      className={`intent-tooltip-item ${item.key === message.intent ? 'active' : ''}`}
-                    >
-                      <span className={`intent-tooltip-dot ${item.key}`} />
-                      <span className="intent-tooltip-item-label">{item.label}</span>
-                      <span className="intent-tooltip-item-desc">{item.desc}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              {showIntentTooltip && createPortal(
+                <div className="intent-tooltip intent-tooltip-visible" style={intentTooltipStyle}>
+                  <div className="intent-tooltip-header">
+                    <span className={`intent-tooltip-active ${message.intent}`}>
+                      {intentLabels[message.intent] || message.intent}
+                    </span>
+                    <span className="intent-tooltip-desc">
+                      {intentDescriptions[message.intent] || ''}
+                    </span>
+                  </div>
+                  <div className="intent-tooltip-divider" />
+                  <div className="intent-tooltip-label">All response modes</div>
+                  <div className="intent-tooltip-list">
+                    {allIntents.map((item) => (
+                      <div
+                        key={item.key}
+                        className={`intent-tooltip-item ${item.key === message.intent ? 'active' : ''}`}
+                      >
+                        <span className={`intent-tooltip-dot ${item.key}`} />
+                        <span className="intent-tooltip-item-label">{item.label}</span>
+                        <span className="intent-tooltip-item-desc">{item.desc}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>,
+                document.body
+              )}
             </span>
           )}
           {message.response_time_ms && (

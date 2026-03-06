@@ -20,6 +20,26 @@
   color: var(--brand-700, #1d4ed8);
 }
 
+.inline-citation.ai-knowledge {
+  color: #9ca3af;
+  cursor: default;
+  transition: color 0.15s ease;
+}
+
+.inline-citation.ai-knowledge:hover {
+  color: #6b7280;
+}
+
+.inline-citation.ai-attributed {
+  color: #0ebc52;
+  cursor: default;
+  transition: color 0.15s ease;
+}
+
+.inline-citation.ai-attributed:hover {
+  color: #0a9940;
+}
+
 .citation-tooltip {
   position: absolute;
   left: 50%;

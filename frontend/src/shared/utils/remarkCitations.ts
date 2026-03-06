@@ -15,7 +15,7 @@ export const remarkCitations: Plugin<[], Root> = () => {
       if (parent.type === 'code' || parent.type === 'inlineCode') return;
 
       const text = node.value;
-      const citationRegex = /\[(\d+)\]/g;
+      const citationRegex = /\[(\d+)\]|\[AI(?::(\d+(?:,\s*\d+)*))?\]/gi;
 
       // Check if this text node contains citation markers
       if (!citationRegex.test(text)) return;
@@ -36,17 +36,32 @@ export const remarkCitations: Plugin<[], Root> = () => {
           });
         }
 
-        // Add citation node (custom type that we'll handle in React)
-        newNodes.push({
-          type: 'citation',
-          data: {
-            hName: 'citation',
-            hProperties: {
-              number: parseInt(match[1], 10)
-            }
-          },
-          value: match[0]
-        });
+        if (match[1]) {
+          // Numeric source citation [N]
+          newNodes.push({
+            type: 'citation',
+            data: {
+              hName: 'citation',
+              hProperties: {
+                number: parseInt(match[1], 10)
+              }
+            },
+            value: match[0]
+          });
+        } else {
+          // AI knowledge citation [AI] or attributed [AI:N,M]
+          newNodes.push({
+            type: 'citation',
+            data: {
+              hName: 'citation',
+              hProperties: {
+                ai: "true",
+                aiSources: match[2] ? match[2].replace(/\s/g, '') : ""
+              }
+            },
+            value: match[0]
+          });
+        }
 
         lastIndex = match.index + match[0].length;
       }
