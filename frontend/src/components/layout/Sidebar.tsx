@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { SquarePen, MessageSquare, Settings, User, Trash2, PanelLeftClose, PanelLeft, MoreVertical, Check, Copy, LogOut, Sparkles, Compass, GraduationCap, Mail, Globe, ChevronRight, Menu, X } from 'lucide-react';
+import { SquarePen, MessageSquare, Settings, User, Trash2, PanelLeftClose, PanelLeft, MoreVertical, MoreHorizontal, ArrowUpDown, Download, Check, Copy, LogOut, Sparkles, Compass, GraduationCap, Mail, Globe, ChevronRight, Menu, X } from 'lucide-react';
 import { getAvatarIcon } from '@/shared/constants/avatarIcons';
 import { useDiscussionStore } from '@/features/discussions';
 import { useChatStore } from '@/features/chat';
@@ -24,9 +24,12 @@ export function Sidebar() {
   const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [showLanguageMenu, setShowLanguageMenu] = useState(false);
   const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
+  const [showConversationsMenu, setShowConversationsMenu] = useState(false);
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [pendingQuestion, setPendingQuestion] = useState<string | null>(null);
   const settingsMenuRef = useRef<HTMLDivElement>(null);
   const sampleQuestionsRef = useRef<HTMLDivElement>(null);
+  const conversationsMenuRef = useRef<HTMLDivElement>(null);
   const {
     discussions,
     activeDiscussionId,
@@ -78,6 +81,36 @@ export function Sidebar() {
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
   }, [showSampleQuestions]);
+
+  // Close conversations menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (conversationsMenuRef.current && !conversationsMenuRef.current.contains(event.target as Node)) {
+        setShowConversationsMenu(false);
+      }
+    };
+    if (showConversationsMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showConversationsMenu]);
+
+  const handleExportHistory = () => {
+    const exportData = discussions.map(d => ({
+      title: d.title || d.messages[0]?.content.slice(0, 60) || 'Untitled',
+      messages: d.messages.length,
+      created: new Date(d.created_at).toLocaleString(),
+      updated: new Date(d.updated_at).toLocaleString(),
+    }));
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `qodex-history-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setShowConversationsMenu(false);
+  };
 
   const handleNewChat = () => {
     // Navigate to empty chat - discussion will be created when user sends first message
@@ -149,6 +182,7 @@ export function Sidebar() {
   };
 
   const grouped = groupByDate(discussions);
+  const sortedDiscussions = sortOrder === 'oldest' ? [...discussions].reverse() : discussions;
 
   return (
     <>
@@ -206,6 +240,43 @@ export function Sidebar() {
         </button>
       </div>
 
+      {/* Conversations header — outside scroll container to avoid overflow clipping */}
+      {!isCollapsed && (
+        <div className="conversations-header" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-start', gap: '6px', margin: '12px 0 4px', padding: '0 8px' }}>
+          <h3 className="sidebar-section-title" style={{ margin: 0 }}>Conversations</h3>
+          {discussions.length >= 4 && (
+            <div className="conversations-menu-container" ref={conversationsMenuRef}>
+              <button
+                className="conversations-menu-btn"
+                onClick={() => setShowConversationsMenu(!showConversationsMenu)}
+                title="Conversation options"
+              >
+                <MoreHorizontal size={16} />
+              </button>
+              {showConversationsMenu && (
+                <div className="conversations-menu-dropdown">
+                  <button
+                    className="conversations-menu-item"
+                    onClick={() => { setSortOrder(sortOrder === 'newest' ? 'oldest' : 'newest'); setShowConversationsMenu(false); }}
+                  >
+                    <ArrowUpDown size={14} />
+                    <span>{sortOrder === 'newest' ? 'Oldest first' : 'Newest first'}</span>
+                  </button>
+                  <button className="conversations-menu-item" onClick={handleExportHistory}>
+                    <Download size={14} />
+                    <span>Export history</span>
+                  </button>
+                  <button className="conversations-menu-item delete" onClick={() => { setShowConversationsMenu(false); setShowDeleteAllModal(true); }}>
+                    <Trash2 size={14} />
+                    <span>Delete all</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Conversations List */}
       <div className="sidebar-conversations">
         {isLoading && discussions.length === 0 ? (
@@ -214,33 +285,6 @@ export function Sidebar() {
           </div>
         ) : (
           <>
-            {/* Conversations heading with delete all icon */}
-            {!isCollapsed && (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                <h3 className="sidebar-section-title" style={{ margin: 0 }}>Conversations</h3>
-                {discussions.length > 7 && (
-                  <button
-                    onClick={() => setShowDeleteAllModal(true)}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      padding: '6px',
-                      cursor: 'pointer',
-                      color: '#9ca3af',
-                      display: 'flex',
-                      alignItems: 'center',
-                      transition: 'color 0.2s ease',
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
-                    onMouseLeave={(e) => e.currentTarget.style.color = '#9ca3af'}
-                    title="Delete all conversations"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                )}
-              </div>
-            )}
-
             {/* Journey button - always visible */}
             <div className="sidebar-journey-section">
               {/* Normal state - full journey button */}
@@ -281,7 +325,7 @@ export function Sidebar() {
             {/* Discussion list */}
             {discussions.length > 0 && (
               <div className="conversation-group-list">
-                {discussions.map((discussion) => (
+                {sortedDiscussions.map((discussion) => (
                   <ConversationItem
                     key={discussion.id}
                     discussion={discussion}

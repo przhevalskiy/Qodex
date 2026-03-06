@@ -70,7 +70,6 @@
 .sidebar-nav-links {
   display: flex;
   flex-direction: column;
-  gap: 4px;
   padding: 12px;
   border-bottom: 1px solid var(--gray-200);
 }
@@ -234,6 +233,75 @@
   color: var(--brand-600);
 }
 
+/* Conversations section menu */
+.conversations-menu-container {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.conversations-menu-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 4px;
+  background: none;
+  border: none;
+  color: var(--gray-400);
+  cursor: pointer;
+  opacity: 0;
+  transition: all var(--transition-fast);
+}
+
+.conversations-header:hover .conversations-menu-btn {
+  opacity: 1;
+}
+
+.conversations-menu-btn:hover {
+  color: var(--gray-600);
+}
+
+.conversations-menu-dropdown {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 4px);
+  background: white;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  min-width: 152px;
+  z-index: 1000;
+  overflow: hidden;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.conversations-menu-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--gray-700);
+  background: white;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.conversations-menu-item:hover {
+  background-color: var(--gray-50);
+}
+
+.conversations-menu-item.delete {
+  color: var(--color-error);
+}
+
+.conversations-menu-item.delete:hover {
+  background-color: #fee;
+}
+
 /* Conversation Groups */
 .conversation-group {
   margin-bottom: 16px;
@@ -260,7 +328,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
+  padding: 8px 12px;
   border-radius: 8px;
   cursor: pointer;
   transition: background-color var(--transition-fast);
