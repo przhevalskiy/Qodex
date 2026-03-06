@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { FileText, Sparkles } from 'lucide-react';
+import { FileText, Waypoints, BrainCircuit } from 'lucide-react';
 import { DocumentSource } from '@/shared/types';
 import { useDocumentPreviewStore } from '@/features/documents';
 import './InlineCitation.css';
@@ -45,7 +45,7 @@ export function InlineCitation({ number, source, ai, resolvedAiSources }: Inline
 
         <div className={`citation-tooltip ${tooltipPosition}${showTooltip ? ' visible' : ''}`}>
           <div className="citation-tooltip-header">
-            <Sparkles size={14} />
+            {isAttributed ? <Waypoints size={14} /> : <BrainCircuit size={14} />}
             <span className="citation-tooltip-filename">
               {isAttributed ? 'Reasoned Inference' : 'General AI Knowledge'}
             </span>
