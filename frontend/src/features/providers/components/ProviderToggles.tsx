@@ -34,6 +34,7 @@ export function ProviderToggles({ selectedProvider, onProviderChange }: Provider
       {open && (
         <div className="provider-inline-dropdown">
           <button
+            type="button"
             className={`provider-inline-option ${currentProvider === 'auto' ? 'active' : ''}`}
             onClick={() => { handleProviderChange('auto'); setOpen(false); }}
           >
@@ -45,6 +46,7 @@ export function ProviderToggles({ selectedProvider, onProviderChange }: Provider
             const isActive = provider.name === currentProvider;
             return (
               <button
+                type="button"
                 key={provider.name}
                 className={`provider-inline-option ${isActive ? 'active' : ''}`}
                 onClick={() => { handleProviderChange(provider.name); setOpen(false); }}
