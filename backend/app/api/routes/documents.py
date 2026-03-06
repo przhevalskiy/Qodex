@@ -79,36 +79,39 @@ async def _save_formatted_to_db(document_id: str, results: list[dict]) -> None:
         logger.warning("Failed to save formatted chunks to Supabase: %s", e)
 
 
-async def _get_raw_content_from_db(document_id: str) -> Optional[dict]:
+async def _get_content_from_format_cache(document_id: str) -> Optional[list]:
     """
-    Fetch cached raw document content from Supabase.
-    Returns dict with full_content and chunks, or None on miss.
+    Read formatted chunks from document_formatted_chunks for a document.
+    Returns a sorted list of chunk dicts (id, content, chunk_index, content_type),
+    or None if the document has no entries in the cache.
+    Chunk index is derived from the chunk_id suffix (format: {document_id}_{index}).
     """
     if not _supabase:
         return None
     try:
-        response = _supabase.table("document_raw_cache") \
-            .select("full_content, chunks") \
+        response = _supabase.table("document_formatted_chunks") \
+            .select("chunk_id, formatted_content") \
             .eq("document_id", document_id) \
-            .single() \
             .execute()
-        return response.data if response.data else None
+        rows = response.data
+        if not rows:
+            return None
+        chunks = []
+        for row in rows:
+            chunk_id = row["chunk_id"]
+            try:
+                chunk_index = int(chunk_id.rsplit("_", 1)[-1])
+            except (ValueError, IndexError):
+                chunk_index = 0
+            chunks.append({
+                "id": chunk_id,
+                "content": row["formatted_content"],
+                "chunk_index": chunk_index,
+                "content_type": "paragraph",
+            })
+        return sorted(chunks, key=lambda c: c["chunk_index"])
     except Exception:
         return None
-
-
-async def _save_raw_content_to_db(document_id: str, content: dict) -> None:
-    """Upsert raw document content into Supabase cache."""
-    if not _supabase:
-        return
-    try:
-        _supabase.table("document_raw_cache").upsert({
-            "document_id": document_id,
-            "full_content": content["full_content"],
-            "chunks": content["chunks"],
-        }).execute()
-    except Exception as e:
-        logger.warning("Failed to save raw content to Supabase: %s", e)
 
 
 # Allowed file types
@@ -260,23 +263,31 @@ async def search_documents(request: SearchRequest):
 
 
 @router.get("/{document_id}/content")
-async def get_document_content(document_id: str, background_tasks: BackgroundTasks):
+async def get_document_content(document_id: str):
     """Get full document content with chunks for preview."""
     from fastapi.responses import JSONResponse
 
-    # L1: check Supabase raw content cache — skip Pinecone if hit
-    cached = await _get_raw_content_from_db(document_id)
-    if cached:
+    # Check document_formatted_chunks first — if populated, skip Pinecone entirely
+    cached_chunks = await _get_content_from_format_cache(document_id)
+    if cached_chunks:
+        doc_service = get_document_service()
+        doc = await doc_service.get_document(document_id)
         return JSONResponse(
-            content={"id": document_id, **cached},
+            content={
+                "id": document_id,
+                "filename": doc.filename if doc else document_id,
+                "content_type": getattr(doc, "content_type", "application/pdf"),
+                "file_size": getattr(doc, "file_size", 0),
+                "chunk_count": len(cached_chunks),
+                "full_content": "\n\n".join(c["content"] for c in cached_chunks),
+                "chunks": cached_chunks,
+            },
             headers={"Cache-Control": "private, max-age=3600"},
         )
 
     doc_service = get_document_service()
     try:
         content = await doc_service.get_document_content(document_id)
-        # Persist to Supabase in the background so this response is not delayed
-        background_tasks.add_task(_save_raw_content_to_db, document_id, content)
         return JSONResponse(
             content=content,
             headers={"Cache-Control": "private, max-age=3600"},
