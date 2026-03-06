@@ -85,6 +85,11 @@ function processCitations(text: string, sources?: DocumentSource[]): React.React
   return parts.length > 0 ? parts : [text];
 }
 
+function normalizeBulletPoints(content: string): string {
+  // Convert • and · bullet characters at line-start to proper markdown list markers
+  return content.replace(/^[•·] /gm, '- ');
+}
+
 function processEmojiLists(content: string): string {
   const lines = content.split('\n');
   const processedLines: string[] = [];
@@ -258,7 +263,7 @@ export const ChatMessage = memo(function ChatMessage({ message, isStreaming, onR
 
   // Skip expensive emoji processing during streaming — AnimatedMarkdown uses raw content
   const processedContent = useMemo(
-    () => isStreaming ? '' : processEmojiLists(message.content),
+    () => isStreaming ? '' : processEmojiLists(normalizeBulletPoints(message.content)),
     [message.content, isStreaming]
   );
 
