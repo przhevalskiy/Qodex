@@ -21,13 +21,13 @@
 }
 
 .inline-citation.ai-knowledge {
-  color: #9ca3af;
+  color: #f4a460;
   cursor: default;
   transition: color 0.15s ease;
 }
 
 .inline-citation.ai-knowledge:hover {
-  color: #6b7280;
+  color: #d4883a;
 }
 
 .inline-citation.ai-attributed {
