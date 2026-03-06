@@ -21,14 +21,10 @@ _format_cache: dict[str, dict[str, str]] = {}
 # ── Supabase singleton (L2 cache) ─────────────────────────────────────────────
 
 def _init_supabase_client():
-    """Create a Supabase client once at module load time, or return None if not configured."""
+    """Get the shared Supabase client (uses service role key, same as discussion service)."""
     try:
-        from app.core.config import get_settings
-        from supabase import create_client
-        settings = get_settings()
-        if not settings.supabase_url or not settings.supabase_key:
-            return None
-        return create_client(settings.supabase_url, settings.supabase_key)
+        from app.database.supabase_client import get_supabase_client
+        return get_supabase_client()
     except Exception:
         return None
 
