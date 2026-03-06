@@ -1,4 +1,5 @@
 from typing import AsyncGenerator, Any
+import asyncio
 import json
 import logging
 import traceback
@@ -31,6 +32,7 @@ async def create_sse_response(
                 "provider": provider
             })
             yield f"data: {data}\n\n"
+            await asyncio.sleep(0)  # cede to event loop → force socket flush per chunk
     except Exception as e:
         # Log the full error with traceback
         logger.error(f"Streaming error from {provider}: {type(e).__name__}: {e}")
