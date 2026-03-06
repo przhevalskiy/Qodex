@@ -20,15 +20,13 @@ _format_cache: dict[str, dict[str, str]] = {}
 
 # ── Supabase singleton (L2 cache) ─────────────────────────────────────────────
 
-def _init_supabase_client():
-    """Get the shared Supabase client (uses service role key, same as discussion service)."""
+def _get_supabase():
+    """Lazily return the shared Supabase client. Called at request time, not import time."""
     try:
         from app.database.supabase_client import get_supabase_client
         return get_supabase_client()
     except Exception:
         return None
-
-_supabase = _init_supabase_client()
 
 
 async def _get_formatted_from_db(document_id: str) -> Optional[dict[str, str]]:
@@ -36,10 +34,10 @@ async def _get_formatted_from_db(document_id: str) -> Optional[dict[str, str]]:
     Fetch persisted formatted chunks from Supabase for a given document.
     Returns a dict of {chunk_id: formatted_content}, or None if not found.
     """
-    if not _supabase:
+    if not _get_supabase():
         return None
     try:
-        response = _supabase.table("document_formatted_chunks") \
+        response = _get_supabase().table("document_formatted_chunks") \
             .select("chunk_id, formatted_content") \
             .eq("document_id", document_id) \
             .execute()
@@ -57,7 +55,7 @@ async def _save_formatted_to_db(document_id: str, results: list[dict]) -> None:
     Upsert formatted chunks into Supabase.
     Safe to call multiple times — unique constraint on (document_id, chunk_id).
     """
-    if not _supabase:
+    if not _get_supabase():
         return
     try:
         rows = [
@@ -68,7 +66,7 @@ async def _save_formatted_to_db(document_id: str, results: list[dict]) -> None:
             }
             for r in results
         ]
-        _supabase.table("document_formatted_chunks") \
+        _get_supabase().table("document_formatted_chunks") \
             .upsert(rows, on_conflict="document_id,chunk_id") \
             .execute()
     except Exception as e:
@@ -82,11 +80,11 @@ async def _get_content_from_format_cache(document_id: str) -> Optional[list]:
     or None if the document has no entries in the cache.
     Chunk index is derived from the chunk_id suffix (format: {document_id}_{index}).
     """
-    if not _supabase:
+    if not _get_supabase():
         logger.warning("PREVIEW CACHE: Supabase client is None — check SUPABASE_URL/SUPABASE_KEY env vars")
         return None
     try:
-        response = _supabase.table("document_formatted_chunks") \
+        response = _get_supabase().table("document_formatted_chunks") \
             .select("chunk_id, formatted_content") \
             .eq("document_id", document_id) \
             .execute()
