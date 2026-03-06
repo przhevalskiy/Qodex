@@ -53,7 +53,7 @@ export function InlineCitation({ number, source, ai, resolvedAiSources }: Inline
           <div className="citation-tooltip-preview">
             {isAttributed ? (
               <>
-                <span>Bridged reasoning based on claims from the sources:</span>
+                <span>This statement was inferred by bridging reasoning across claims found in the following sources:</span>
                 {resolvedAiSources!.map((s, i) => (
                   <div key={s.id || i} className="citation-source-row">
                     <span className="citation-source-chip">[{s.citation_number}]</span>
