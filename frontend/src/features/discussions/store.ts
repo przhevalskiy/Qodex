@@ -48,7 +48,6 @@ export const useDiscussionStore = create<DiscussionStore>((set, get) => ({
       const discussion = await api.createDiscussion(data);
       set(state => ({
         discussions: [discussion, ...state.discussions],
-        activeDiscussionId: discussion.id,
         isLoading: false,
       }));
       return discussion;
