@@ -1,9 +1,8 @@
 import { useRef, useCallback, useEffect } from 'react';
 
-const DRAIN_INTERVAL_MS = 50;  // release 2 words per tick → ~40 words/sec, halves render count
-const NORMAL_BATCH = 2;
-const CATCHUP_THRESHOLD = 8;   // start catching up sooner, avoids visible lurch
-const CATCHUP_BURST = 5;
+const DRAIN_INTERVAL_MS = 50;  // release 1 word per tick → ~20 words/sec
+const CATCHUP_THRESHOLD = 20;  // if queue depth exceeds this, release 3 words/tick
+const CATCHUP_BURST = 3;
 
 /**
  * Buffers incoming SSE text chunks into a word queue and drains them at a
@@ -37,7 +36,7 @@ export function useChunkBuffer(onFlush: (buffered: string) => void) {
         stopInterval();
         return;
       }
-      const count = queue.length > CATCHUP_THRESHOLD ? CATCHUP_BURST : NORMAL_BATCH;
+      const count = queue.length > CATCHUP_THRESHOLD ? CATCHUP_BURST : 1;
       const words = queue.splice(0, count);
       onFlushRef.current(words.join(''));
     }, DRAIN_INTERVAL_MS);
