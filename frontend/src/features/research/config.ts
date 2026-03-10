@@ -1,4 +1,4 @@
-import { Search, Sparkles, BookOpen } from 'lucide-react';
+import { Search, Telescope, BookOpen } from 'lucide-react';
 import type { ResearchMode } from '@/shared/types';
 
 export interface ResearchModeUIConfig {
@@ -12,11 +12,11 @@ export const RESEARCH_MODE_UI: Record<ResearchMode, ResearchModeUIConfig> = {
   quick: {
     icon: Search,
     label: 'Quick',
-    description: 'Searches your most relevant sources',
+    description: 'Searches for most relevant sources',
     rangeLabel: 'up to 7',
   },
   enhanced: {
-    icon: Sparkles,
+    icon: Telescope,
     label: 'Enhanced',
     description: 'Broader search across more sources',
     rangeLabel: 'up to 12',
