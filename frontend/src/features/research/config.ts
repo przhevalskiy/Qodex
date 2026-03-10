@@ -12,19 +12,19 @@ export const RESEARCH_MODE_UI: Record<ResearchMode, ResearchModeUIConfig> = {
   quick: {
     icon: Search,
     label: 'Quick',
-    description: 'Focused search across your most relevant sources',
+    description: 'Searches your most relevant sources',
     rangeLabel: 'up to 7',
   },
   enhanced: {
     icon: Sparkles,
     label: 'Enhanced',
-    description: 'Broader search to find and connect more sources',
+    description: 'Broader search across more sources',
     rangeLabel: 'up to 12',
   },
   deep: {
     icon: BookOpen,
     label: 'Deep Research',
-    description: 'Widest net for the most thorough, exhaustive analysis',
+    description: 'Widest search for exhaustive analysis',
     rangeLabel: 'up to 16',
   },
 };

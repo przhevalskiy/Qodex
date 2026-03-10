@@ -174,7 +174,7 @@ export function InputActionsDropdown() {
                 <button
                   key={mode.mode}
                   type="button"
-                  className={`input-actions-item ${isActive ? 'active' : ''}`}
+                  className={`input-actions-item input-actions-research-item ${isActive ? 'active' : ''}`}
                   onClick={() => handleModeSelect(mode.mode)}
                 >
                   <Icon size={18} />

@@ -79,7 +79,7 @@
   position: absolute;
   bottom: calc(100% + 8px);
   left: 0;
-  min-width: 280px;
+  min-width: 290px;
   background-color: var(--color-white);
   border: 1px solid var(--gray-200);
   border-radius: 12px;
@@ -137,6 +137,10 @@
 .input-actions-item-desc {
   font-size: 12px;
   color: var(--gray-500);
+}
+
+.input-actions-research-item .input-actions-item-desc {
+  font-size: 11px;
 }
 
 .input-actions-item-count {
