@@ -21,23 +21,23 @@
 }
 
 .inline-citation.ai-knowledge {
-  color: #f4a460;
+  color: #06b6d4;
   cursor: default;
   transition: color 0.15s ease;
 }
 
 .inline-citation.ai-knowledge:hover {
-  color: #d4883a;
+  color: #0891b2;
 }
 
 .inline-citation.ai-attributed {
-  color: #0ebc52;
+  color: #6366f1;
   cursor: default;
   transition: color 0.15s ease;
 }
 
 .inline-citation.ai-attributed:hover {
-  color: #0a9940;
+  color: #4f46e5;
 }
 
 .citation-tooltip {
@@ -123,30 +123,21 @@
   max-height: 100px;
   overflow-y: auto;
   scroll-behavior: smooth;
+  scrollbar-width: none;
 }
 
 .citation-tooltip-preview::-webkit-scrollbar {
-  width: 4px;
-}
-
-.citation-tooltip-preview::-webkit-scrollbar-track {
-  background: var(--gray-100, #f3f4f6);
-  border-radius: 2px;
-}
-
-.citation-tooltip-preview::-webkit-scrollbar-thumb {
-  background: var(--gray-300, #d1d5db);
-  border-radius: 2px;
-}
-
-.citation-tooltip-preview::-webkit-scrollbar-thumb:hover {
-  background: var(--gray-400, #9ca3af);
+  display: none;
 }
 
 .citation-tooltip-score {
-  font-size: 11px;
+  display: inline-block;
+  padding: 2px 6px;
+  background-color: var(--brand-50, #eff6ff);
   color: var(--brand-600, #2563eb);
-  font-weight: 500;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .citation-source-row {
@@ -173,6 +164,30 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.citation-tooltip-cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--gray-600, #4b5563);
+  font-style: normal;
+  font-size: 12px;
+}
+
+/* AI claim underline — highlights the sentence/clause attributed to AI */
+.ai-claim-text {
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+}
+
+.ai-claim-general {
+  text-decoration-color: #06b6d4;
+}
+
+.ai-claim-attributed {
+  text-decoration-color: #6366f1;
 }
 
 /* Mobile responsiveness */

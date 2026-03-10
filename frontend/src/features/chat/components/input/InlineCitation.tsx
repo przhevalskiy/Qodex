@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { FileText, Waypoints, BrainCircuit } from 'lucide-react';
+import { FileText, Waypoints, BrainCircuit, ArrowUpRight } from 'lucide-react';
 import { DocumentSource } from '@/shared/types';
 import { useDocumentPreviewStore } from '@/features/documents';
 import './InlineCitation.css';
@@ -93,11 +93,9 @@ export function InlineCitation({ number, source, ai, resolvedAiSources }: Inline
           <FileText size={14} />
           <span className="citation-tooltip-filename">{source.filename}</span>
         </div>
-        {source.chunk_preview && (
-          <div className="citation-tooltip-preview">
-            {source.chunk_preview}
-          </div>
-        )}
+        <div className="citation-tooltip-preview citation-tooltip-cta">
+          Click to view source content used: <ArrowUpRight size={12} />
+        </div>
         <div className="citation-tooltip-score">
           Relevance: {Math.round(source.score * 100)}%
         </div>

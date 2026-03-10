@@ -34,6 +34,30 @@ _CITATION_RE = re.compile(r'\[\d+\]')
 # Fallback minimum cosine similarity (used only if research config lacks min_score)
 _MIN_SCORE = 0.40
 
+# Matches bullet symbols, course-code prefixes (L1, L2 …), page markers, etc.
+_ARTIFACT_RE = re.compile(r'[●•▪▸◦·]\s*|^\s*[A-Z]\d+\s+', re.MULTILINE)
+
+
+def _make_chunk_preview(text: str, max_len: int = 200) -> str:
+    """Return a clean, sentence-complete preview of a raw chunk string."""
+    # Strip bullet/course-code artifacts and normalize whitespace
+    cleaned = _ARTIFACT_RE.sub('', text)
+    cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+
+    # Find the first complete sentence
+    match = re.search(r'[.!?](\s|$)', cleaned)
+    if match:
+        preview = cleaned[:match.start() + 1].strip()
+    else:
+        # No sentence boundary — cut on a word boundary
+        preview = cleaned[:max_len].rsplit(' ', 1)[0] if len(cleaned) > max_len else cleaned
+
+    # Hard cap
+    if len(preview) > max_len:
+        preview = preview[:max_len].rsplit(' ', 1)[0] + '…'
+
+    return preview
+
 
 def _extract_query_terms(query: str) -> List[str]:
     """Extract meaningful terms from a query for entity-content matching.
@@ -494,7 +518,7 @@ async def stream_chat(
                             "chunks": [],
                             "best_score": effective_score,
                             "best_chunk_id": chunk_id,
-                            "best_preview": content[:150] + "..." if len(content) > 150 else content,
+                            "best_preview": _make_chunk_preview(content),
                         }
 
                     group = doc_groups[doc_id]
@@ -502,7 +526,7 @@ async def stream_chat(
                     if effective_score > group["best_score"]:
                         group["best_score"] = effective_score
                         group["best_chunk_id"] = chunk_id
-                        group["best_preview"] = content[:150] + "..." if len(content) > 150 else content
+                        group["best_preview"] = _make_chunk_preview(content)
 
             # Cap to research_config.top_k documents (over-fetch was for
             # casting a wider net; now trim back to the requested depth).

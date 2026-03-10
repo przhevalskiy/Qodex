@@ -1,5 +1,6 @@
 import { FileText } from 'lucide-react';
 import { DocumentSource } from '@/shared/types';
+import { formatChunkPreview } from '@/shared/utils/formatChunkPreview';
 import './SourceCard.css';
 
 interface SourceCardProps {
@@ -15,12 +16,7 @@ export function SourceCard({ source, onClick }: SourceCardProps) {
     ? source.filename.slice(0, 37) + '...'
     : source.filename;
 
-  // Truncate preview text
-  const previewText = source.chunk_preview
-    ? source.chunk_preview.length > 120
-      ? source.chunk_preview.slice(0, 117) + '...'
-      : source.chunk_preview
-    : 'No preview available';
+  const previewText = formatChunkPreview(source.chunk_preview) || 'No preview available';
 
   return (
     <div className="source-card" onClick={onClick} role="button" tabIndex={0}>
