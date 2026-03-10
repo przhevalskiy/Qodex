@@ -597,8 +597,13 @@
   min-width: 140px;
   max-height: 280px;
   overflow-y: auto;
+  scrollbar-width: none;
   z-index: 1001;
   animation: fadeIn 0.15s ease-out;
+}
+
+.language-submenu::-webkit-scrollbar {
+  display: none;
 }
 
 .language-submenu-item {
