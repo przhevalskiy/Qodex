@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { SquarePen, MessageSquare, Settings, User, Trash2, PanelLeftClose, PanelLeft, MoreVertical, MoreHorizontal, ArrowUpDown, Download, Check, Copy, LogOut, Sparkles, Compass, GraduationCap, Mail, Globe, ChevronRight, Menu, X } from 'lucide-react';
+import { SquarePen, MessageSquare, MessageCirclePlus, Settings, User, Trash2, PanelLeftClose, PanelLeft, MoreVertical, MoreHorizontal, ArrowUpDown, Download, Check, Copy, LogOut, Sparkles, Compass, GraduationCap, Mail, Globe, ChevronRight, Menu, X } from 'lucide-react';
 import { getAvatarIcon } from '@/shared/constants/avatarIcons';
 import { useDiscussionStore } from '@/features/discussions';
 import { useChatStore } from '@/features/chat';
@@ -577,7 +577,7 @@ function ConversationItem({ discussion, isActive, onSelect, onDelete, onActivate
       onClick={onSelect}
     >
       {isCollapsed ? (
-        <MessageSquare size={16} className="conversation-item-icon" />
+        <MessageCirclePlus size={16} className="conversation-item-icon" />
       ) : (
         <>
           <span className="conversation-item-title">{title}</span>
