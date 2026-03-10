@@ -375,6 +375,12 @@ export const ChatMessage = memo(function ChatMessage({ message, isStreaming, onR
                         key={item.key}
                         className={`intent-tooltip-item ${item.key === message.intent ? 'active' : ''}`}
                       >
+                        <span className="intent-tooltip-item-indicator">
+                          {item.key === message.intent
+                            ? <Check size={11} strokeWidth={2.5} />
+                            : <span className="intent-tooltip-item-dash">—</span>
+                          }
+                        </span>
                         <span className="intent-tooltip-item-label">{item.label}</span>
                         <span className="intent-tooltip-item-desc">{item.desc}</span>
                       </div>
