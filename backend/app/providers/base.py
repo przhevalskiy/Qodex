@@ -113,9 +113,11 @@ class BaseProvider(ABC):
                     "- Use [AI] when the statement comes entirely from general training knowledge.\n"
                     "- Do NOT apply [AI:N,M] or [AI] to factual claims already cited with [N].\n"
                     "- Apply at the sentence level, inline — not only at paragraph ends.\n"
+                    "- Summary and Key Takeaway sentences MUST always be cited. If the takeaway synthesizes multiple sources, use [AI:N,M] listing all source numbers reasoned from. If it draws on general knowledge, use [AI]. Never leave a summary or takeaway sentence without a citation marker.\n"
                     "Examples:\n"
                     "  'Carbon credits function like tradeable permits for emissions. [AI]'\n"
-                    "  'This regulatory structure suggests companies prioritize cheaper offsets first. [AI:2,3]'\n\n"
+                    "  'This regulatory structure suggests companies prioritize cheaper offsets first. [AI:2,3]'\n"
+                    "  'Key Takeaway: Carbon credits create a market mechanism for emission reductions, though their effectiveness remains debated. [AI:1,5]'\n\n"
                     "Now provide an accurate and helpful response with inline citations."
                 )
             else:
