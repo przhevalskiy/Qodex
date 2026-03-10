@@ -19,6 +19,11 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  scrollbar-width: none;
+}
+
+.chat-messages::-webkit-scrollbar {
+  display: none;
 }
 
 .chat-messages-inner {

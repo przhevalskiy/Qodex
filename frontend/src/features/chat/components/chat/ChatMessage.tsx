@@ -251,6 +251,13 @@ const markdownComponents = {
     if (ai) return <InlineCitation ai={true} />;
     return null;
   },
+  'ai-claim'({ attributed, children }: { attributed?: string; children?: React.ReactNode }) {
+    return (
+      <span className={`ai-claim-text${attributed === 'true' ? ' ai-claim-attributed' : ' ai-claim-general'}`}>
+        {children}
+      </span>
+    );
+  },
 };
 
 const remarkPlugins = [remarkGfm, remarkCitations];
@@ -368,7 +375,6 @@ export const ChatMessage = memo(function ChatMessage({ message, isStreaming, onR
                         key={item.key}
                         className={`intent-tooltip-item ${item.key === message.intent ? 'active' : ''}`}
                       >
-                        <span className={`intent-tooltip-dot ${item.key}`} />
                         <span className="intent-tooltip-item-label">{item.label}</span>
                         <span className="intent-tooltip-item-desc">{item.desc}</span>
                       </div>

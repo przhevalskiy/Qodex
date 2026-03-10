@@ -70,10 +70,11 @@
   font-weight: 500;
   padding: 2px 8px;
   border-radius: 15px;
-  background-color: #f0fdf4;
-  color: #166534;
-  border: 1px solid #bbf7d0;
+  background-color: var(--gray-50, #f9fafb);
+  color: var(--gray-700, #374151);
+  border: 1px solid var(--gray-300, #d1d5db);
   transition: opacity 0.15s ease;
+  cursor: default;
 }
 
 .intent-chip-wrapper:hover .message-intent {
@@ -111,40 +112,9 @@
   border-radius: 10px;
   display: inline-flex;
   align-self: flex-start;
-}
-
-/* Reuse intent chip colors for the active label in tooltip */
-.intent-tooltip-active.summarize {
-  background-color: #eff6ff;
-  color: #1e40af;
-}
-.intent-tooltip-active.explain {
-  background-color: #faf5ff;
-  color: #6b21a8;
-}
-.intent-tooltip-active.compare {
-  background-color: #ecfeff;
-  color: #155e75;
-}
-.intent-tooltip-active.case_study {
-  background-color: #fef3c7;
-  color: #92400e;
-}
-.intent-tooltip-active.generate_questions {
-  background-color: #fff1f2;
-  color: #9f1239;
-}
-.intent-tooltip-active.critique {
-  background-color: #fff7ed;
-  color: #9a3412;
-}
-.intent-tooltip-active.methodology {
-  background-color: #f0fdf4;
-  color: #166534;
-}
-.intent-tooltip-active.lesson_plan {
-  background-color: #fdf4ff;
-  color: #86198f;
+  background-color: var(--gray-50, #f9fafb);
+  color: var(--gray-700, #374151);
+  border: 1px solid var(--gray-300, #d1d5db);
 }
 
 .intent-tooltip-desc {
@@ -192,17 +162,8 @@
   height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
+  background-color: var(--gray-400, #9ca3af);
 }
-
-.intent-tooltip-dot.generalist { background-color: #6b7280; }
-.intent-tooltip-dot.summarize { background-color: #3b82f6; }
-.intent-tooltip-dot.explain { background-color: #8b5cf6; }
-.intent-tooltip-dot.compare { background-color: #06b6d4; }
-.intent-tooltip-dot.case_study { background-color: #f59e0b; }
-.intent-tooltip-dot.generate_questions { background-color: #f43f5e; }
-.intent-tooltip-dot.critique { background-color: #f97316; }
-.intent-tooltip-dot.methodology { background-color: #22c55e; }
-.intent-tooltip-dot.lesson_plan { background-color: #d946ef; }
 
 .intent-tooltip-item-label {
   font-weight: 500;
@@ -215,59 +176,6 @@
   font-size: 11px;
 }
 
-.message-intent.case_study {
-  background-color: #fef3c7;
-  color: #92400e;
-  border-color: #fde68a;
-}
-
-.message-intent.generalist {
-  background-color: #f3f4f6;
-  color: #374151;
-  border-color: #d1d5db;
-}
-
-.message-intent.summarize {
-  background-color: #eff6ff;
-  color: #1e40af;
-  border-color: #bfdbfe;
-}
-
-.message-intent.explain {
-  background-color: #faf5ff;
-  color: #6b21a8;
-  border-color: #e9d5ff;
-}
-
-.message-intent.compare {
-  background-color: #ecfeff;
-  color: #155e75;
-  border-color: #a5f3fc;
-}
-
-.message-intent.generate_questions {
-  background-color: #fff1f2;
-  color: #9f1239;
-  border-color: #fecdd3;
-}
-
-.message-intent.critique {
-  background-color: #fff7ed;
-  color: #9a3412;
-  border-color: #fed7aa;
-}
-
-.message-intent.methodology {
-  background-color: #f0fdf4;
-  color: #166534;
-  border-color: #bbf7d0;
-}
-
-.message-intent.lesson_plan {
-  background-color: #fdf4ff;
-  color: #86198f;
-  border-color: #f0abfc;
-}
 
 /* Research Mode Chip */
 .research-mode-chip {
