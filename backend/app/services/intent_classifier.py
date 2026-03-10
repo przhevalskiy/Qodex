@@ -109,7 +109,7 @@ INTENT_DEFINITIONS = [
     {
         "intent": "case_study",
         "label": "Case Study",
-        "preferred_provider": "claude",
+        "preferred_provider": "mistral",
         "patterns": [
             r"\bcase stud(y|ies)\b",
             r"\breal[- ]?world example\b",
@@ -142,7 +142,7 @@ INTENT_DEFINITIONS = [
     {
         "intent": "generate_questions",
         "label": "Assessment",
-        "preferred_provider": "mistral",
+        "preferred_provider": "claude",
         "patterns": [
             r"\b(generate|create|write|give me|suggest|come up with) .*(questions?|quiz|exam|test|assessment)\b",
             r"\bquiz me\b",
@@ -163,9 +163,16 @@ INTENT_DEFINITIONS = [
             "### Synthesis & Evaluation\n"
             "- 1-2 questions requiring integration of multiple concepts or critical evaluation\n"
             "### Answer Key\n"
-            "- Provide concise model answers or key points for each question\n\n"
+            "- Provide concise model answers or key points for each question\n"
+            "- Each answer must end with citation marker(s): [N] for direct source, [AI:N,M] for bridged reasoning across sources, [AI] for general model knowledge. Markers are tokens only — never write [AI: text] or [AI: explanation].\n\n"
             "Questions should be specific to the source content, not generic. "
             "Include the cognitive level label in parentheses after each question.\n\n"
+            "Citation policy for questions: After each question, append the source citation(s) that the question is derived from:\n"
+            "- Use [N] if the question is directly grounded in a specific retrieved source\n"
+            "- Use [AI:N,M] if the question bridges reasoning across multiple sources\n"
+            "- Use [AI] if the question draws on general model knowledge not present in the retrieved sources\n"
+            "IMPORTANT: Citation markers must be tokens only — [1], [AI], [AI:1,3] — never add text inside the brackets. Do NOT write [AI: explanation] or [AI: text here].\n"
+            "Every question must end with at least one citation marker.\n\n"
             "Apply the inference policy: ground all factual claims in retrieved sources; "
             "state any gaps clearly; label causal bridge connections explicitly rather than presenting them as established fact."
         ),
@@ -206,7 +213,7 @@ INTENT_DEFINITIONS = [
     {
         "intent": "methodology",
         "label": "Methodology",
-        "preferred_provider": "mistral",
+        "preferred_provider": "claude",
         "patterns": [
             r"\bmethodolog(y|ies|ical)\b",
             r"\bresearch (design|method|approach)\b",
@@ -235,7 +242,7 @@ INTENT_DEFINITIONS = [
     {
         "intent": "lesson_plan",
         "label": "Lesson Plan",
-        "preferred_provider": "claude",
+        "preferred_provider": "mistral",
         "patterns": [
             r"\blesson plan\b",
             r"\bteaching (plan|strategy|approach|activity|activities)\b",
@@ -356,7 +363,7 @@ def classify_intent(message: str, has_attachments: bool = False) -> IntentResult
     return IntentResult(
         intent="generalist",
         label="Generalist",
-        preferred_provider="claude",
+        preferred_provider="mistral",
         prompt_suffix=(
             "\n\nProvide a comprehensive, well-structured response:\n"
             "- Lead with a clear, concise answer to the user's question\n"
