@@ -256,7 +256,7 @@
 .document-chat .input-container {
   display: flex;
   gap: 0.75rem;
-  align-items: flex-end;
+  align-items: center;
   background-color: var(--color-white);
   border: 1px solid var(--gray-200);
   border-radius: 2rem;

@@ -5,6 +5,7 @@ import { ArrowUp, ArrowUpRight } from 'lucide-react';
 import { useDocumentPreviewStore } from '@/features/documents';
 import { useAuthStore } from '@/features/auth';
 import { ThinkingIndicator } from '../ui/ThinkingIndicator';
+import { VoiceInput } from '../ui/VoiceInput';
 import { getAvatarIcon } from '@/shared/constants/avatarIcons';
 import { remarkCitations } from '@/shared/utils/remarkCitations';
 import { exportDocumentToPDF } from '@/shared/services/pdfExport';
@@ -193,6 +194,10 @@ export function DocumentChat({ documentId, documentContent: _documentContent }: 
               placeholder="Ask anything..."
               className="chat-input"
               rows={1}
+              disabled={isDocumentChatStreaming}
+            />
+            <VoiceInput
+              onTranscript={(text) => setInputValue(prev => prev ? `${prev} ${text}` : text)}
               disabled={isDocumentChatStreaming}
             />
             <button
