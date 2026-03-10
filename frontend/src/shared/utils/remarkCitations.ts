@@ -70,10 +70,15 @@ export const remarkCitations: Plugin<[], Root> = () => {
           const beforeClaim = preceding.substring(0, sentenceStart);
           const claimText = preceding.substring(sentenceStart);
 
-          if (beforeClaim) {
-            newNodes.push({ type: 'text', value: beforeClaim });
+          // Strip leading punctuation (e.g. ": " or ", ") from claimText — push as plain text
+          const leadingPunct = /^[:\s,;]+/.exec(claimText);
+          const claimPrefix = leadingPunct ? leadingPunct[0] : '';
+          const claimBody = claimText.substring(claimPrefix.length);
+
+          if (beforeClaim || claimPrefix) {
+            newNodes.push({ type: 'text', value: beforeClaim + claimPrefix });
           }
-          if (claimText) {
+          if (claimBody) {
             newNodes.push({
               type: 'aiClaim',
               data: {
@@ -82,7 +87,7 @@ export const remarkCitations: Plugin<[], Root> = () => {
                   attributed: match[2] ? 'true' : 'false'
                 }
               },
-              children: [{ type: 'text', value: claimText }]
+              children: [{ type: 'text', value: claimBody }]
             });
           }
           newNodes.push({
