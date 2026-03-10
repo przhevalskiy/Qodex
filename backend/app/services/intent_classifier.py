@@ -17,6 +17,17 @@ class IntentResult:
     preferred_provider: Optional[str] = None  # Override user-selected provider if set
 
 
+# Citation format rule injected into every intent prompt.
+_CITATION_POLICY = (
+    "Citation format: place an inline [N] marker immediately after every claim drawn from a "
+    "retrieved source (e.g. 'Emissions fell 12% between 2010 and 2020 [1][3]'). "
+    "For reasoning that bridges multiple sources, use [AI:N,M]. "
+    "For claims from general model knowledge not present in the retrieved sources, use [AI]. "
+    "NEVER write 'Source 1', 'Source 2', 'the document', or 'according to the sources' in prose — "
+    "use bracket markers only. Every factual claim must carry at least one marker."
+)
+
+
 # Intent definitions: (intent_key, display_label, patterns, prompt_suffix)
 INTENT_DEFINITIONS = [
     {
@@ -277,6 +288,10 @@ INTENT_DEFINITIONS = [
     },
 ]
 
+# Append citation policy to every intent's prompt_suffix.
+for _defn in INTENT_DEFINITIONS:
+    _defn["prompt_suffix"] = _defn["prompt_suffix"].rstrip() + "\n\n" + _CITATION_POLICY
+
 
 # ---------------------------------------------------------------------------
 # Knowledge-base routing: when the user has attachments, decide whether to
@@ -377,7 +392,7 @@ def classify_intent(message: str, has_attachments: bool = False) -> IntentResult
             "Adapt depth to the complexity of the question. Simple questions deserve concise answers; "
             "complex questions warrant thorough exploration. Always ground claims in source material.\n\n"
             "Apply the inference policy: ground all factual claims in retrieved sources; "
-            "state any gaps clearly; label causal bridge connections explicitly rather than presenting them as established fact."
-        ),
+            "state any gaps clearly; label causal bridge connections explicitly rather than presenting them as established fact.\n\n"
+        ) + _CITATION_POLICY,
         use_knowledge_base=use_kb,
     )
