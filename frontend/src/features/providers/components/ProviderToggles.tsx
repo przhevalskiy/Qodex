@@ -61,6 +61,7 @@ export function ProviderToggles({ selectedProvider, onProviderChange }: Provider
       )}
 
       <button
+        type="button"
         className={`provider-inline-toggle ${open ? 'open' : ''} ${currentProvider === 'auto' ? 'auto' : ''}`}
         onClick={() => setOpen(o => !o)}
         title="Switch AI model"
