@@ -297,7 +297,7 @@ class ChatRequest(BaseModel):
     document_ids: Optional[List[str]] = None
     attachment_ids: Optional[List[str]] = None  # conversation-scoped attachments
     temperature: float = 0.1
-    max_tokens: int = 4096
+    max_tokens: int = 8192
     research_mode: ResearchMode = DEFAULT_RESEARCH_MODE
 
 
