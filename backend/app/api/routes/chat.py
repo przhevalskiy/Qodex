@@ -385,7 +385,7 @@ async def stream_chat(
     if intent_result.intent == "continuation":
         raw_history = disc_service.get_context_messages(request.discussion_id, limit=20)
         last_assistant = next(
-            (m for m in reversed(raw_history) if m.role == MessageRole.assistant),
+            (m for m in reversed(raw_history) if m.role == MessageRole.ASSISTANT),
             None,
         )
         if last_assistant and last_assistant.intent and last_assistant.intent in INTENT_LOOKUP:
