@@ -35,7 +35,9 @@ export const remarkCitations: Plugin<[], Root> = () => {
       if (parent.type === 'code' || parent.type === 'inlineCode') return;
 
       const text = node.value;
-      const citationRegex = /\[(\d+)\]|\[AI(?::(\d+(?:,\s*\d+)*))?\]/gi;
+      // match[1] = numeric N in [N]
+      // match[2] = everything after "AI" inside the bracket (e.g. "", ":1,2", ": some text")
+      const citationRegex = /\[(\d+)\]|\[AI([^\]]*)\]/gi;
 
       // Check if this text node contains citation markers
       if (!citationRegex.test(text)) return;
@@ -64,39 +66,60 @@ export const remarkCitations: Plugin<[], Root> = () => {
             value: match[0]
           });
         } else {
-          // AI knowledge citation [AI] or attributed [AI:N,M]
-          // Underline only the final sentence/clause before the citation
-          const sentenceStart = getLastSentenceStart(preceding);
-          const beforeClaim = preceding.substring(0, sentenceStart);
-          const claimText = preceding.substring(sentenceStart);
+          // AI knowledge citation: [AI], [AI:1,2], or [AI: embedded text]
+          const aiSuffix = match[2] || '';
+          const numericMatch = /^:(\d+(?:,\s*\d+)*)$/.exec(aiSuffix);
+          const embeddedTextMatch = !numericMatch && /^:\s*(.+?)\s*$/.exec(aiSuffix);
+          const aiSources = numericMatch ? numericMatch[1].replace(/\s/g, '') : '';
 
-          // Strip leading punctuation (e.g. ": " or ", ") from claimText — push as plain text
-          const leadingPunct = /^[:\s,;]+/.exec(claimText);
-          const claimPrefix = leadingPunct ? leadingPunct[0] : '';
-          const claimBody = claimText.substring(claimPrefix.length);
+          let claimBody: string;
+          let beforeClaim: string;
+          let claimPrefix: string;
+
+          if (embeddedTextMatch) {
+            // Model wrote [AI: claim text here] — use the embedded text as the claim span
+            claimBody = embeddedTextMatch[1];
+            beforeClaim = preceding;
+            claimPrefix = '';
+          } else {
+            // Normal [AI] or [AI:1,2] — derive claim sentence from preceding text
+            const sentenceStart = getLastSentenceStart(preceding);
+            const rawClaim = preceding.substring(sentenceStart);
+            const leadingPunct = /^[:\s,;]+/.exec(rawClaim);
+            claimPrefix = leadingPunct ? leadingPunct[0] : '';
+            claimBody = rawClaim.substring(claimPrefix.length);
+            beforeClaim = preceding.substring(0, sentenceStart);
+          }
 
           if (beforeClaim || claimPrefix) {
             newNodes.push({ type: 'text', value: beforeClaim + claimPrefix });
           }
-          if (claimBody) {
+
+          // Only wrap as aiClaim if the body has meaningful word content (not just punctuation)
+          const hasMeaningfulContent = claimBody.trim().length > 1 && /\w/.test(claimBody);
+          if (hasMeaningfulContent) {
             newNodes.push({
               type: 'aiClaim',
               data: {
                 hName: 'ai-claim',
                 hProperties: {
-                  attributed: match[2] ? 'true' : 'false'
+                  attributed: (numericMatch || embeddedTextMatch) ? 'true' : 'false'
                 }
               },
               children: [{ type: 'text', value: claimBody }]
             });
+          } else if (claimBody) {
+            // Not meaningful enough to underline — push as plain text
+            newNodes.push({ type: 'text', value: claimBody });
           }
+
           newNodes.push({
             type: 'citation',
             data: {
               hName: 'citation',
               hProperties: {
                 ai: "true",
-                aiSources: match[2] ? match[2].replace(/\s/g, '') : ""
+                aiSources
               }
             },
             value: match[0]
