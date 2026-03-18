@@ -61,6 +61,8 @@
 .intent-chip-wrapper {
   position: relative;
   display: inline-flex;
+  align-items: center;
+  gap: 6px;
   cursor: pointer;
 }
 
@@ -79,6 +81,14 @@
 
 .intent-chip-wrapper:hover .message-intent {
   opacity: 0.85;
+}
+
+/* Continuation chip — sits next to the primary intent chip */
+.message-intent.continuation {
+  background-color: transparent;
+  color: var(--gray-400, #9ca3af);
+  border-color: var(--gray-200, #e5e7eb);
+  font-style: italic;
 }
 
 /* Intent Tooltip */

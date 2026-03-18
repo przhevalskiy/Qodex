@@ -71,7 +71,7 @@ export function useSSE() {
           } else if (event.type === 'sources') {
             setStreamSources(event.sources);
           } else if (event.type === 'intent') {
-            setStreamIntent(event.intent, event.label);
+            setStreamIntent(event.intent, event.label, (event as any).is_continuation === true);
           } else if (event.type === 'chunk') {
             pushChunk(event.content);
           } else if (event.type === 'suggested_questions') {

@@ -23,6 +23,7 @@ export interface Message {
   citations?: Record<number, string>;  // Map citation numbers to document IDs
   suggested_questions?: string[];  // AI-generated follow-up questions
   intent?: string;  // Detected intent: "summarize", "case_study", etc.
+  is_continuation?: boolean;  // True when this response resumed a prior truncated response
   research_mode?: ResearchMode;  // Active research depth: "quick", "enhanced", "deep"
 }
 

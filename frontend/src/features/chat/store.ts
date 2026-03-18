@@ -10,6 +10,7 @@ interface ChatState {
   currentStreamSources: DocumentSource[];
   currentStreamSuggestedQuestions: string[];
   currentStreamIntent: { intent: string; label: string } | null;
+  currentStreamIsContinuation: boolean;
   currentStreamResearchMode: string | null;
   error: string | null;
   isLoadingMessages: boolean;
@@ -25,7 +26,7 @@ interface ChatActions {
   appendToStream: (chunk: string) => void;
   setStreamSources: (sources: DocumentSource[]) => void;
   setStreamSuggestedQuestions: (questions: string[]) => void;
-  setStreamIntent: (intent: string, label: string) => void;
+  setStreamIntent: (intent: string, label: string, isContinuation?: boolean) => void;
   setStreamResearchMode: (mode: string) => void;
   finalizeStream: (messageId: string) => void;
   gracefulStop: (messageId: string, discussionId: string) => void;
@@ -85,6 +86,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   currentStreamSources: [],
   currentStreamSuggestedQuestions: [],
   currentStreamIntent: null,
+  currentStreamIsContinuation: false,
   currentStreamResearchMode: null,
   error: null,
   isLoadingMessages: false,
@@ -134,6 +136,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       currentStreamSources: [],
       currentStreamSuggestedQuestions: [],
       currentStreamIntent: null,
+      currentStreamIsContinuation: false,
       currentStreamResearchMode: null,
       error: null,
     });
@@ -153,8 +156,13 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     set({ currentStreamSuggestedQuestions: questions });
   },
 
-  setStreamIntent: (intent: string, label: string) => {
-    set({ currentStreamIntent: { intent, label } });
+  setStreamIntent: (intent: string, label: string, isContinuation = false) => {
+    if (isContinuation) {
+      // Second intent event — mark as continuation, keep primary intent unchanged
+      set({ currentStreamIsContinuation: true });
+    } else {
+      set({ currentStreamIntent: { intent, label }, currentStreamIsContinuation: false });
+    }
   },
 
   setStreamResearchMode: (mode: string) => {
@@ -173,6 +181,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       sources: state.currentStreamSources.length > 0 ? state.currentStreamSources : undefined,
       suggested_questions: state.currentStreamSuggestedQuestions.length > 0 ? state.currentStreamSuggestedQuestions : undefined,
       intent: state.currentStreamIntent?.intent || undefined,
+      is_continuation: state.currentStreamIsContinuation || undefined,
       research_mode: (state.currentStreamResearchMode as Message['research_mode']) || undefined,
     };
 
@@ -184,6 +193,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       currentStreamSources: [],
       currentStreamSuggestedQuestions: [],
       currentStreamIntent: null,
+      currentStreamIsContinuation: false,
       currentStreamResearchMode: null,
     }));
   },
@@ -201,6 +211,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         currentStreamSources: [],
         currentStreamSuggestedQuestions: [],
         currentStreamIntent: null,
+        currentStreamIsContinuation: false,
       });
       return;
     }

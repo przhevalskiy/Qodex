@@ -29,8 +29,44 @@ _CITATION_POLICY = (
 )
 
 
+# Continuation instruction prepended when resuming a truncated response.
+# Invariant: always paired with the primary intent's prompt_suffix, never used alone.
+CONTINUATION_INSTRUCTION = (
+    "\n\nCONTINUATION INSTRUCTION — CRITICAL: The previous response was cut off mid-output. "
+    "Resume from the EXACT point it ended. Rules:\n"
+    "- Do NOT restart, reintroduce, or repeat any content already written\n"
+    "- Do NOT re-output the title, introduction, or any section already completed\n"
+    "- Begin your output with the next word or sentence that should follow the cut-off point\n"
+    "- Maintain all names, numbers, and details already established in the prior response\n"
+    "- Complete all remaining sections fully before stopping\n"
+)
+
 # Intent definitions: (intent_key, display_label, patterns, prompt_suffix)
+# Invariant: continuation must be FIRST so it is matched before any content intent.
 INTENT_DEFINITIONS = [
+    {
+        # Signals that the user wants to resume a truncated prior response.
+        # No prompt_suffix here — chat.py resolves the primary intent's suffix at runtime.
+        "intent": "continuation",
+        "label": "Continuing Response",
+        "preferred_provider": None,  # inherit from primary intent
+        "max_tokens": 12000,
+        "patterns": [
+            r"\bstill incomplete\b",
+            r"\bincomplete\b",
+            r"\bstill (not |un)?finished\b",
+            r"\b(cut|got cut) off\b",
+            r"\btruncated\b",
+            r"\b(please |can you )?(continue|keep going|finish|complete (it|this|the response))\b",
+            r"\bwhere (you|it) left off\b",
+            r"\bmore of (it|this|that)\b",
+            r"\bnot done\b",
+            r"\bnot finished\b",
+            r"\bpick up (from |where)?\b",
+            r"\bcarry on\b",
+        ],
+        "prompt_suffix": "",  # placeholder — overridden at route level
+    },
     {
         "intent": "summarize",
         "label": "Summary",
@@ -337,9 +373,14 @@ INTENT_DEFINITIONS = [
     },
 ]
 
-# Append citation policy to every intent's prompt_suffix.
+# Append citation policy to every intent's prompt_suffix (skip continuation — it has none).
 for _defn in INTENT_DEFINITIONS:
-    _defn["prompt_suffix"] = _defn["prompt_suffix"].rstrip() + "\n\n" + _CITATION_POLICY
+    if _defn["intent"] != "continuation" and _defn["prompt_suffix"]:
+        _defn["prompt_suffix"] = _defn["prompt_suffix"].rstrip() + "\n\n" + _CITATION_POLICY
+
+# Lookup dict: intent key → definition. Used by chat.py to resolve the primary
+# intent's prompt_suffix when handling a continuation request.
+INTENT_LOOKUP: dict = {d["intent"]: d for d in INTENT_DEFINITIONS}
 
 
 # ---------------------------------------------------------------------------

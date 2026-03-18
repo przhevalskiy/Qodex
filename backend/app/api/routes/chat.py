@@ -23,7 +23,7 @@ from app.services.document_service import get_document_service
 from app.services.attachment_service import get_attachment_service
 from app.services.discussion_service import get_discussion_service
 from app.utils.streaming import create_sse_response, format_sse_event
-from app.services.intent_classifier import classify_intent
+from app.services.intent_classifier import classify_intent, INTENT_LOOKUP, CONTINUATION_INSTRUCTION
 from app.auth import get_current_user_id
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
@@ -375,6 +375,40 @@ async def stream_chat(
     # When attachments exist, also determines if Pinecone should be queried
     intent_result = classify_intent(request.message, has_attachments=has_attachments)
 
+    # Continuation resolution:
+    # If the user is resuming a truncated response, find the last assistant message,
+    # recover its primary intent, and build a combined prompt:
+    #   CONTINUATION_INSTRUCTION + primary intent's prompt_suffix
+    # Invariant: if no prior assistant message exists, or it has no intent field,
+    # fall back to generalist silently — never error.
+    primary_intent_key: Optional[str] = None
+    if intent_result.intent == "continuation":
+        raw_history = disc_service.get_context_messages(request.discussion_id, limit=20)
+        last_assistant = next(
+            (m for m in reversed(raw_history) if m.role == MessageRole.assistant),
+            None,
+        )
+        if last_assistant and last_assistant.intent and last_assistant.intent in INTENT_LOOKUP:
+            primary_intent_key = last_assistant.intent
+            primary_defn = INTENT_LOOKUP[primary_intent_key]
+            # Inherit provider and token budget from primary intent
+            if intent_result.preferred_provider is None:
+                intent_result.preferred_provider = primary_defn.get("preferred_provider")
+            if not intent_result.max_tokens:
+                intent_result.max_tokens = primary_defn.get("max_tokens") or 12000
+            # Build combined prompt: continuation anchor + primary intent structure
+            intent_result.prompt_suffix = (
+                CONTINUATION_INSTRUCTION + primary_defn["prompt_suffix"]
+            )
+        else:
+            # No recoverable prior intent — treat as generalist continuation
+            primary_intent_key = "generalist"
+            intent_result.prompt_suffix = (
+                CONTINUATION_INSTRUCTION
+                + INTENT_LOOKUP.get("generalist", {}).get("prompt_suffix", "")
+            )
+            intent_result.max_tokens = intent_result.max_tokens or 12000
+
     # Resolve effective provider:
     # - "auto": use intent's preferred_provider if its key is configured, else fall back to first configured
     # - explicit (mistral/claude): always use the user's selection, no override
@@ -636,13 +670,15 @@ async def stream_chat(
             }
             yield f"data: {json.dumps(sources_data)}\n\n"
 
-        # Emit intent event
-        intent_data = {
-            "type": "intent",
-            "intent": intent_result.intent,
-            "label": intent_result.label
-        }
-        yield f"data: {json.dumps(intent_data)}\n\n"
+        # Emit intent event(s).
+        # For continuation: emit the primary intent first, then the continuation
+        # marker so the frontend can render both chips side by side.
+        if intent_result.intent == "continuation" and primary_intent_key:
+            primary_label = INTENT_LOOKUP.get(primary_intent_key, {}).get("label", primary_intent_key)
+            yield f"data: {json.dumps({'type': 'intent', 'intent': primary_intent_key, 'label': primary_label})}\n\n"
+            yield f"data: {json.dumps({'type': 'intent', 'intent': 'continuation', 'label': 'Continuing Response', 'is_continuation': True})}\n\n"
+        else:
+            yield f"data: {json.dumps({'type': 'intent', 'intent': intent_result.intent, 'label': intent_result.label})}\n\n"
 
         # Resolve effective token budget:
         # intent_result.max_tokens overrides the request default when the intent
@@ -688,7 +724,9 @@ async def stream_chat(
             timestamp=datetime.utcnow(),
             response_time_ms=response_time,
             sources=sources if sources else None,
-            intent=intent_result.intent,
+            # For continuation responses, persist the primary intent so future
+            # continuations can chain correctly (not "continuation" of "continuation").
+            intent=primary_intent_key if intent_result.intent == "continuation" and primary_intent_key else intent_result.intent,
             research_mode=request.research_mode.value,
         )
 

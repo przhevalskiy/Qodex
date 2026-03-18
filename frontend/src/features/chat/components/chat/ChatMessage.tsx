@@ -359,6 +359,11 @@ export const ChatMessage = memo(function ChatMessage({ message, isStreaming, onR
               <span className={`message-intent ${message.intent}`}>
                 {intentLabels[message.intent] || message.intent}
               </span>
+              {message.is_continuation && (
+                <span className="message-intent continuation">
+                  Continuing Response
+                </span>
+              )}
               {showIntentTooltip && createPortal(
                 <div className="intent-tooltip intent-tooltip-visible" style={intentTooltipStyle}>
                   <div className="intent-tooltip-header">
