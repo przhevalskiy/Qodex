@@ -1,51 +1,86 @@
 import { SampleQuestion } from '../types/sampleQuestions';
 
-// Sample questions for educators with nested sub-questions
-// Contextually related to climate education and syllabus design
+// Sample questions organized by intent — each main entry maps to a specific
+// response mode, and sub-questions are ready-to-send example prompts.
 export const SAMPLE_QUESTIONS: SampleQuestion[] = [
   {
-    main: "Summarize key themes across my syllabi",
+    // → Explainer intent
+    main: "Explain a concept in plain terms",
     subQuestions: [
-      { text: "What topics appear most frequently?" },
-      { text: "Compare learning objectives across courses" },
-      { text: "Identify gaps in topic coverage" },
-      { text: "Extract common reading assignments" }
+      { text: "Explain carbon pricing mechanisms in simple terms" },
+      { text: "Break down how project finance works for renewable energy" },
+      { text: "What is additionality and why does it matter for carbon credits?" },
+      { text: "Simplify scope 1, 2, and 3 emissions for a non-technical audience" }
     ]
   },
   {
-    main: "Help me design a lesson plan on climate topics",
+    // → Summary intent
+    main: "Summarize & synthesize my sources",
     subQuestions: [
-      { text: "Create learning objectives for carbon markets" },
-      { text: "Suggest classroom activities for climate adaptation" },
-      { text: "Design a case study discussion on renewable energy" },
-      { text: "Build an assessment rubric for sustainability projects" }
+      { text: "Summarize the key findings across my uploaded documents" },
+      { text: "What are the main themes in my syllabi?" },
+      { text: "Give me a high-level overview of climate adaptation frameworks in my sources" },
+      { text: "What gaps exist in my current course materials?" }
     ]
   },
   {
-    main: "Find case studies on sustainable finance",
+    // → Comparison intent
+    main: "Compare approaches or frameworks",
     subQuestions: [
-      { text: "Real-world examples of green bond issuance" },
-      { text: "ESG integration case studies for class" },
-      { text: "Climate risk assessment scenarios" },
-      { text: "Stakeholder analysis for energy transition" }
+      { text: "Compare compliance vs. voluntary carbon markets" },
+      { text: "How do the learning objectives differ across my syllabi?" },
+      { text: "Contrast ITC vs. PTC structures for renewable energy projects" },
+      { text: "Compare top-down vs. bottom-up climate policy approaches" }
     ]
   },
   {
-    main: "Generate assessment questions from my documents",
+    // → Case Analysis intent
+    main: "Analyze this as a case study",
     subQuestions: [
-      { text: "Create recall and comprehension questions" },
-      { text: "Design analytical essay prompts" },
-      { text: "Build a quiz on climate policy frameworks" },
-      { text: "Generate discussion questions for seminars" }
+      { text: "Frame this document as a case study with stakeholders and outcomes" },
+      { text: "What are the key challenges in this renewable energy scenario?" },
+      { text: "Analyze how this policy was implemented in practice" },
+      { text: "What lessons can be drawn from this case for future projects?" }
     ]
   },
   {
-    main: "Explain a complex climate concept for students",
+    // → Critique intent
+    main: "Critique this research or argument",
     subQuestions: [
-      { text: "Break down carbon pricing mechanisms" },
-      { text: "Simplify climate modeling approaches" },
-      { text: "Explain the Paris Agreement framework" },
-      { text: "Describe scope 1, 2, and 3 emissions" }
+      { text: "What are the methodological strengths and weaknesses of this paper?" },
+      { text: "Identify gaps and biases in this climate policy analysis" },
+      { text: "What counterarguments exist to the claims in my sources?" },
+      { text: "How should a reader calibrate confidence in these findings?" }
+    ]
+  },
+  {
+    // → Assessment intent
+    main: "Generate assessment questions",
+    subQuestions: [
+      { text: "Create Bloom's Taxonomy questions from my uploaded materials" },
+      { text: "Build a quiz on carbon markets and climate finance" },
+      { text: "Generate discussion questions for a graduate seminar" },
+      { text: "Design analytical essay prompts based on my course readings" }
+    ]
+  },
+  {
+    // → Lesson Plan intent
+    main: "Design a lesson plan or teaching resource",
+    subQuestions: [
+      { text: "Create a lesson plan on climate adaptation for graduate students" },
+      { text: "Design classroom activities around carbon pricing mechanisms" },
+      { text: "Build a discussion guide for a renewable energy case" },
+      { text: "Suggest learning objectives and assessments for an ESG course module" }
+    ]
+  },
+  {
+    // → Builder intent
+    main: "Build a full document from scratch",
+    subQuestions: [
+      { text: "Build a full case study on renewable energy project finance modeled after my sources" },
+      { text: "Draft a complete syllabus for a graduate climate finance course" },
+      { text: "Write a policy proposal on carbon credit reform from scratch" },
+      { text: "Create a full report on ESG integration frameworks based on my documents" }
     ]
   },
 ];
