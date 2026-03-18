@@ -7,10 +7,8 @@ import traceback
 logger = logging.getLogger(__name__)
 
 PROVIDER_NAMES = {
-    "openai": "OpenAI",
     "claude": "Claude",
     "mistral": "Mistral",
-    "cohere": "Cohere",
 }
 
 
