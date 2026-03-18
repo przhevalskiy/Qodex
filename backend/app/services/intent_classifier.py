@@ -123,7 +123,7 @@ INTENT_DEFINITIONS = [
             "- Build from foundational ideas to complex ones\n"
             "- Use short paragraphs (2-3 sentences max)\n"
             "- Highlight cause-and-effect relationships explicitly\n"
-            "- End with a 'Key Takeaway' sentence that captures the core idea\n\n"
+            "- End with a 'Key Takeaway' sentence that captures the core idea — this sentence must also carry citation markers like any other factual claim\n\n"
             "Avoid jargon without explanation. If a term is domain-specific, explain it.\n\n"
             "Apply the inference policy: ground all factual claims in retrieved sources; "
             "state any gaps clearly; label causal bridge connections explicitly rather than presenting them as established fact."
