@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useLayoutEffect, useState } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { SampleQuestion } from '@/shared/types/sampleQuestions';
 
@@ -9,42 +9,36 @@ interface NestedQuestionItemProps {
 
 export function NestedQuestionItem({ question, onQuestionSelect }: NestedQuestionItemProps) {
   const [showSubMenu, setShowSubMenu] = useState(false);
-  const [subMenuStyle, setSubMenuStyle] = useState<React.CSSProperties>({});
+  const [subMenuStyle, setSubMenuStyle] = useState<React.CSSProperties>({ visibility: 'hidden' });
   const itemRef = useRef<HTMLButtonElement>(null);
+  const subMenuRef = useRef<HTMLDivElement>(null);
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Position sub-menu to the right when it opens
-  useEffect(() => {
-    if (showSubMenu && itemRef.current) {
+  // After submenu renders, measure its actual height and reposition if it would overflow
+  useLayoutEffect(() => {
+    if (showSubMenu && itemRef.current && subMenuRef.current) {
       const rect = itemRef.current.getBoundingClientRect();
+      const menuHeight = subMenuRef.current.offsetHeight;
+      const menuWidth = 240;
+      const gap = 4;
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
-      const subMenuWidth = 200;
-      const gap = 4;
 
-      // Default position: to the right
+      // Horizontal: prefer right, fall back to left
       let left = rect.right + gap;
+      if (left + menuWidth > viewportWidth) {
+        left = rect.left - menuWidth - gap;
+      }
+
+      // Vertical: align top with item, but clamp so bottom doesn't overflow
       let top = rect.top;
-
-      // Check if sub-menu would overflow right edge
-      if (left + subMenuWidth > viewportWidth) {
-        // Position to the left instead
-        left = rect.left - subMenuWidth - gap;
+      if (top + menuHeight > viewportHeight - 8) {
+        top = viewportHeight - menuHeight - 8;
       }
 
-      // Check if sub-menu would overflow bottom
-      const estimatedHeight = question.subQuestions.length * 40; // Rough estimate
-      if (top + estimatedHeight > viewportHeight) {
-        top = viewportHeight - estimatedHeight - 8;
-      }
-
-      setSubMenuStyle({
-        top: `${top}px`,
-        left: `${left}px`,
-        width: `${subMenuWidth}px`,
-      });
+      setSubMenuStyle({ top: `${top}px`, left: `${left}px`, width: `${menuWidth}px`, visibility: 'visible' });
     }
-  }, [showSubMenu, question.subQuestions.length]);
+  }, [showSubMenu]);
 
   const handleMouseEnter = () => {
     // Clear any existing timeout
@@ -59,14 +53,12 @@ export function NestedQuestionItem({ question, onQuestionSelect }: NestedQuestio
   };
 
   const handleMouseLeave = () => {
-    // Clear timeout if user leaves before delay
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
     }
-
-    // Hide sub-menu after slight delay (allows moving to sub-menu)
     hoverTimeoutRef.current = setTimeout(() => {
       setShowSubMenu(false);
+      setSubMenuStyle({ visibility: 'hidden' });
     }, 100);
   };
 
@@ -78,12 +70,12 @@ export function NestedQuestionItem({ question, onQuestionSelect }: NestedQuestio
   };
 
   const handleSubMenuMouseLeave = () => {
-    // Close sub-menu when leaving
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
     }
     hoverTimeoutRef.current = setTimeout(() => {
       setShowSubMenu(false);
+      setSubMenuStyle({ visibility: 'hidden' });
     }, 100);
   };
 
@@ -123,6 +115,7 @@ export function NestedQuestionItem({ question, onQuestionSelect }: NestedQuestio
 
       {showSubMenu && (
         <div
+          ref={subMenuRef}
           className="sample-questions-submenu"
           style={subMenuStyle}
           onMouseEnter={handleSubMenuMouseEnter}

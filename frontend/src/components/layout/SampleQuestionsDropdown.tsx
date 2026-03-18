@@ -31,16 +31,14 @@ export function SampleQuestionsDropdown({
         setMenuStyle({
           top: `${rect.top}px`,
           left: `${rect.right + 8}px`,
-          width: '240px',
+          width: '280px',
         });
       } else {
-        // Normal state - menu fits within sidebar width
-        const sidebarWidth = 260;
-        const menuWidth = sidebarWidth - 24; // 12px padding on each side
+        // Normal state - extend slightly beyond sidebar width for readability
         setMenuStyle({
           top: `${rect.bottom + 4}px`,
           left: '12px',
-          width: `${menuWidth}px`,
+          width: '280px',
         });
       }
     }
