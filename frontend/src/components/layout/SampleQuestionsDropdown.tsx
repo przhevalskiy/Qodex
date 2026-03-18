@@ -31,14 +31,14 @@ export function SampleQuestionsDropdown({
         setMenuStyle({
           top: `${rect.top}px`,
           left: `${rect.right + 8}px`,
-          width: '280px',
+          width: '300px',
         });
       } else {
         // Normal state - extend slightly beyond sidebar width for readability
         setMenuStyle({
           top: `${rect.bottom + 4}px`,
           left: '12px',
-          width: '280px',
+          width: '300px',
         });
       }
     }
