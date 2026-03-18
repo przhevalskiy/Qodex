@@ -25,7 +25,9 @@ _CITATION_POLICY = (
     "For reasoning that bridges multiple sources, use [AI:N,M]. "
     "For claims from general model knowledge not present in the retrieved sources, use [AI]. "
     "NEVER write 'Source 1', 'Source 2', 'the document', or 'according to the sources' in prose — "
-    "use bracket markers only. Every factual claim must carry at least one marker."
+    "use bracket markers only. Every factual claim must carry at least one marker. "
+    "CRITICAL: Citation markers are TOKENS ONLY — [1], [AI], [AI:1,3]. "
+    "NEVER embed text inside a marker. Do NOT write [AI: explanation], [AI: text here], or any variant with words inside the brackets."
 )
 
 
@@ -155,6 +157,98 @@ INTENT_DEFINITIONS = [
         ),
     },
     {
+        # High-compute authoring intent: user wants to BUILD a long-form document from scratch —
+        # case studies, syllabi, curricula, reports, proposals, frameworks, etc.
+        # Distinct from case_study (which analyzes existing material).
+        # Invariant: matched BEFORE case_study so "build a case study" routes here.
+        "intent": "builder",
+        "label": "Builder",
+        "preferred_provider": "claude",
+        "max_tokens": 12000,
+        "patterns": [
+            r"\b(build|create|write|draft|develop|construct|generate|produce) (a |an |the |this |new |full |complete |entire )?(new |full |complete |entire )?(case|syllabus|syllabi|curriculum|curricula|course|report|proposal|framework|document|guide|handbook|plan)\b",
+            r"\bmimick(ing)?\b",
+            r"\bmodeled? after\b",
+            r"\bfrom scratch\b",
+            r"\bnew (case|syllabus|curriculum|report|proposal)\b",
+            r"\boriginal (case|syllabus|curriculum|report)\b",
+            r"\bcreate .*(foak|first.of.a.kind)\b",
+            r"\b(foak|first.of.a.kind).*(case|study)\b",
+        ],
+        "prompt_suffix": (
+            "\n\n## Task — Build a Full Publication-Quality Document\n"
+            "You are authoring a complete document in the style of a Stanford GSB or Harvard Business School case. "
+            "Write the ENTIRE document in a single response. Do NOT stop mid-section.\n\n"
+
+            "### For a CASE STUDY, use these exact section headers in your output:\n"
+            "# [Descriptive Title — no case numbers, no copyright, no author line]\n"
+            "## Introduction\n"
+            "Open with a specific date and a named protagonist facing a concrete decision. "
+            "Establish the company, project, stakes, and central tension in the first two paragraphs. "
+            "End with the decision or challenge the protagonist must resolve.\n"
+            "## [Background Section 1 — e.g. 'The Renewable Energy Landscape']\n"
+            "## [Background Section 2 — e.g. 'Policy & Regulatory Environment']\n"
+            "(2–4 thematic background sections total, each with a descriptive ## header, written in past-tense narrative prose)\n"
+            "## The Project\n"
+            "Detailed narrative: site/context selection rationale, specifications, timeline, key decisions made and why.\n"
+            "## Stakeholders & Challenges\n"
+            "Multiple perspectives. Quote key actors where possible. Include opposing viewpoints. Do not editorialize.\n"
+            "## Financing & Implementation\n"
+            "Capital structure, funding sources, deal terms, cost metrics (LCOE, $/W, etc.), PPAs, government incentives. "
+            "Use a Markdown table for any multi-column financial data (e.g. funding sources, cost breakdown).\n"
+            "## Risk Analysis\n"
+            "Technology, market, regulatory, environmental, and financial risks with mitigations. "
+            "Use a Markdown table with columns: Risk | Likelihood | Impact | Mitigation.\n"
+            "## Outcomes & Lessons\n"
+            "What happened, what worked, what did not. Quantify where possible.\n"
+            "## Conclusion\n"
+            "Return to the protagonist. What decision do they now face? End with 1–2 open strategic questions.\n"
+            "## Discussion Questions\n"
+            "3–5 numbered questions suitable for graduate-level classroom discussion.\n"
+            "## Suggested Pre-Reads\n"
+            "3–5 relevant readings a student should review before class: academic papers, industry reports, news articles, "
+            "or book chapters. For each: author, title, and one sentence on why it is relevant.\n"
+            "## Exhibits\n"
+            "Reference exhibits inline as 'Exhibit 1', 'Exhibit 2', etc. List each at the end with a title and "
+            "description of its contents (table, chart, or data summary).\n\n"
+
+            "### For a SYLLABUS or CURRICULUM, use these exact section headers:\n"
+            "# [Course Title]\n"
+            "## Course Overview\n"
+            "## Learning Objectives\n"
+            "(Use Bloom's Taxonomy levels; present as a numbered list)\n"
+            "## Weekly Schedule\n"
+            "(Use a Markdown table: Week | Topic | Readings | Activities)\n"
+            "## Assignments & Assessments\n"
+            "(Include rubric weights as a Markdown table)\n"
+            "## Grading Policy\n"
+            "## Required & Recommended Readings\n\n"
+
+            "### For a REPORT or PROPOSAL, use these exact section headers:\n"
+            "# [Report/Proposal Title]\n"
+            "## Executive Summary\n"
+            "## Background & Context\n"
+            "## Analysis\n"
+            "(Include data tables where applicable)\n"
+            "## Findings / Recommendations\n"
+            "## Implementation Plan\n"
+            "## Conclusion\n"
+            "## Appendices\n\n"
+
+            "### Authoring rules (apply to all document types):\n"
+            "- Use rich formatting: ## section headers, narrative paragraphs, bullet lists where appropriate, and Markdown tables for structured data\n"
+            "- Use past tense for historical events; present tense for standing facts\n"
+            "- Include specific numbers, dates, names, and data where available from sources\n"
+            "- Use inline [N] citation markers after every factual claim — same format as all other response modes\n"
+            "- For reasoning bridged across sources use [AI:N,M]; for model knowledge with no source use [AI]\n"
+            "- Do NOT truncate or summarize sections — complete every section fully\n"
+            "- If the response approaches the output limit, finish the current section cleanly "
+            "and add '## [Continued — say \"continue\" for next section]' so the user knows to resume\n\n"
+            "Apply the inference policy: ground all factual claims in retrieved sources; "
+            "state any gaps clearly; label causal bridge connections explicitly rather than presenting them as established fact."
+        ),
+    },
+    {
         "intent": "case_study",
         "label": "Case Study",
         "preferred_provider": "mistral",
@@ -183,54 +277,6 @@ INTENT_DEFINITIONS = [
             "### Discussion Questions\n"
             "- Pose 2-3 questions suitable for classroom discussion\n\n"
             "Ground all claims in the source material. Flag any inferences clearly.\n\n"
-            "Apply the inference policy: ground all factual claims in retrieved sources; "
-            "state any gaps clearly; label causal bridge connections explicitly rather than presenting them as established fact."
-        ),
-    },
-    {
-        # Authoring intent: user wants to BUILD a new case document from scratch,
-        # modeled after or inspired by a reference case. Distinct from case_study
-        # (which analyzes an existing case). Triggers on construction verbs + "case".
-        # Invariant: matched BEFORE case_study in the list so "build a case study"
-        # routes here rather than to the analysis intent.
-        "intent": "create_case",
-        "label": "Case Builder",
-        "preferred_provider": "claude",
-        "max_tokens": 12000,
-        "patterns": [
-            r"\b(build|create|write|draft|develop|construct|generate|produce) (a |an |the |this |new |full |complete |entire )?(new |full |complete |entire )?case\b",
-            r"\bmimick(ing)?\b",
-            r"\bmodeled? after\b",
-            r"\bfrom scratch\b",
-            r"\bnew case\b",
-            r"\boriginal case\b",
-            r"\bcreate .*(foak|first.of.a.kind)\b",
-            r"\b(foak|first.of.a.kind).*(case|study)\b",
-        ],
-        "prompt_suffix": (
-            "\n\n## Task — Build a Full Case Study Document\n"
-            "You are authoring a complete, publication-quality case study modeled after the reference "
-            "material provided. Write the ENTIRE document in a single response. Do NOT stop mid-section.\n\n"
-            "Follow this structure (adapt section names to fit the subject matter):\n"
-            "1. **Title & Header** — Title, date, location, authorship note\n"
-            "2. **Introduction** — Opening scene, protagonist, project overview, key decision at stake\n"
-            "3. **Context** — Industry/technology background, market conditions, regulatory environment\n"
-            "4. **Technology Overview** — How the technology works, advantages, limitations, FOAK risks\n"
-            "5. **The Project** — Specifications, timeline, site selection, construction narrative\n"
-            "6. **Environmental & Regulatory Challenges** — Permitting, stakeholder conflicts, mitigations\n"
-            "7. **Financing Structure** — Capital stack table, debt/equity/grants, offtake agreements\n"
-            "8. **Risk Analysis** — Technology, market, regulatory, financial risks with mitigations\n"
-            "9. **Business Model** — Revenue streams, PPA structure, competitive positioning\n"
-            "10. **Outcomes & Lessons** — What happened, what worked, what did not\n"
-            "11. **Discussion Questions** — 3-5 questions for classroom use\n\n"
-            "Authoring rules:\n"
-            "- Write in narrative prose, not bullet points — this is a document, not a Q&A\n"
-            "- Use the reference case structure and tone as a template\n"
-            "- Include specific numbers, dates, names, and data where available from sources\n"
-            "- Clearly label any invented or extrapolated details with [AI]\n"
-            "- Do NOT truncate or summarize sections — complete every section fully\n"
-            "- If the response approaches the output limit, finish the current section cleanly "
-            "and add a note '## [Continued — request next section]' so the user knows to ask for more\n\n"
             "Apply the inference policy: ground all factual claims in retrieved sources; "
             "state any gaps clearly; label causal bridge connections explicitly rather than presenting them as established fact."
         ),
