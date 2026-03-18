@@ -250,7 +250,7 @@ INTENT_DEFINITIONS = [
     },
     {
         "intent": "case_study",
-        "label": "Case Study",
+        "label": "Case Analysis",
         "preferred_provider": "mistral",
         "patterns": [
             r"\bcase stud(y|ies)\b",
