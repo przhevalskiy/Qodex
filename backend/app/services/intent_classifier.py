@@ -28,7 +28,8 @@ _CITATION_POLICY = (
     "use bracket markers only. Every factual claim must carry at least one marker. "
     "CRITICAL: Citation markers are TOKENS ONLY — [1], [AI], [AI:1,3]. "
     "NEVER embed text inside a marker. Do NOT write [AI: explanation], [AI: text here], or any variant with words inside the brackets. "
-    "NEVER place a citation marker at the START of a sentence — markers must always follow the claim they support, not precede it."
+    "NEVER place a citation marker at the START of a sentence — markers must always follow the claim they support, not precede it. "
+    "This rule applies to ALL sentences including summaries, key takeaways, and concluding statements — they are not exempt from citation requirements."
 )
 
 
