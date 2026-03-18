@@ -644,6 +644,16 @@ async def stream_chat(
         }
         yield f"data: {json.dumps(intent_data)}\n\n"
 
+        # Resolve effective token budget:
+        # intent_result.max_tokens overrides the request default when the intent
+        # requires long-form generation (e.g. create_case needs 12000).
+        # Invariant: intent override only raises the cap, never lowers it —
+        # take the max so an explicit high request.max_tokens is always honoured.
+        effective_max_tokens = max(
+            request.max_tokens,
+            intent_result.max_tokens or 0,
+        )
+
         # Wrap the provider stream to collect raw chunks before SSE serialization,
         # avoiding the cost of re-parsing our own JSON output.
         async def _collect_and_stream():
@@ -651,7 +661,7 @@ async def stream_chat(
                 messages=context_messages,
                 context=context,
                 temperature=request.temperature,
-                max_tokens=request.max_tokens,
+                max_tokens=effective_max_tokens,
                 intent_prompt=intent_result.prompt_suffix,
                 research_prompt=research_config.prompt_enhancement,
                 image_attachments=image_attachments or None,

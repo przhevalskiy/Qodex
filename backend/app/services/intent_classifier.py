@@ -15,6 +15,7 @@ class IntentResult:
     prompt_suffix: str   # Appended to system prompt
     use_knowledge_base: bool = True  # Whether to query Pinecone
     preferred_provider: Optional[str] = None  # Override user-selected provider if set
+    max_tokens: Optional[int] = None  # Per-intent token budget override; None = use request default
 
 
 # Citation format rule injected into every intent prompt.
@@ -146,6 +147,54 @@ INTENT_DEFINITIONS = [
             "### Discussion Questions\n"
             "- Pose 2-3 questions suitable for classroom discussion\n\n"
             "Ground all claims in the source material. Flag any inferences clearly.\n\n"
+            "Apply the inference policy: ground all factual claims in retrieved sources; "
+            "state any gaps clearly; label causal bridge connections explicitly rather than presenting them as established fact."
+        ),
+    },
+    {
+        # Authoring intent: user wants to BUILD a new case document from scratch,
+        # modeled after or inspired by a reference case. Distinct from case_study
+        # (which analyzes an existing case). Triggers on construction verbs + "case".
+        # Invariant: matched BEFORE case_study in the list so "build a case study"
+        # routes here rather than to the analysis intent.
+        "intent": "create_case",
+        "label": "Case Builder",
+        "preferred_provider": "claude",
+        "max_tokens": 12000,
+        "patterns": [
+            r"\b(build|create|write|draft|develop|construct|generate|produce) (a |an |the |this |new |full |complete |entire )?(new |full |complete |entire )?case\b",
+            r"\bmimick(ing)?\b",
+            r"\bmodeled? after\b",
+            r"\bfrom scratch\b",
+            r"\bnew case\b",
+            r"\boriginal case\b",
+            r"\bcreate .*(foak|first.of.a.kind)\b",
+            r"\b(foak|first.of.a.kind).*(case|study)\b",
+        ],
+        "prompt_suffix": (
+            "\n\n## Task — Build a Full Case Study Document\n"
+            "You are authoring a complete, publication-quality case study modeled after the reference "
+            "material provided. Write the ENTIRE document in a single response. Do NOT stop mid-section.\n\n"
+            "Follow this structure (adapt section names to fit the subject matter):\n"
+            "1. **Title & Header** — Title, date, location, authorship note\n"
+            "2. **Introduction** — Opening scene, protagonist, project overview, key decision at stake\n"
+            "3. **Context** — Industry/technology background, market conditions, regulatory environment\n"
+            "4. **Technology Overview** — How the technology works, advantages, limitations, FOAK risks\n"
+            "5. **The Project** — Specifications, timeline, site selection, construction narrative\n"
+            "6. **Environmental & Regulatory Challenges** — Permitting, stakeholder conflicts, mitigations\n"
+            "7. **Financing Structure** — Capital stack table, debt/equity/grants, offtake agreements\n"
+            "8. **Risk Analysis** — Technology, market, regulatory, financial risks with mitigations\n"
+            "9. **Business Model** — Revenue streams, PPA structure, competitive positioning\n"
+            "10. **Outcomes & Lessons** — What happened, what worked, what did not\n"
+            "11. **Discussion Questions** — 3-5 questions for classroom use\n\n"
+            "Authoring rules:\n"
+            "- Write in narrative prose, not bullet points — this is a document, not a Q&A\n"
+            "- Use the reference case structure and tone as a template\n"
+            "- Include specific numbers, dates, names, and data where available from sources\n"
+            "- Clearly label any invented or extrapolated details with [AI]\n"
+            "- Do NOT truncate or summarize sections — complete every section fully\n"
+            "- If the response approaches the output limit, finish the current section cleanly "
+            "and add a note '## [Continued — request next section]' so the user knows to ask for more\n\n"
             "Apply the inference policy: ground all factual claims in retrieved sources; "
             "state any gaps clearly; label causal bridge connections explicitly rather than presenting them as established fact."
         ),
@@ -300,14 +349,23 @@ for _defn in INTENT_DEFINITIONS:
 
 # Patterns that signal the user is asking about their OWN attached documents.
 _ATTACHMENT_ONLY_PATTERNS = [
-    r"\b(this|these|the|my) \d* *(document|file|attachment|upload|paper|syllab|pdf)",
+    r"\b(this|these|the|my) \d* *(document|file|attachment|upload|paper|syllab|pdf|case)",
     r"\bwhat (is|are) (this|these|it|they) about\b",
-    r"\b(tell me|what) about (this|these|the) (document|file|paper|syllab)",
-    r"\buploaded (document|file|paper|syllab)",
-    r"\b(read|analyze|review|parse|look at) (this|these|the|my) (document|file|paper|attachment|syllab)",
-    r"\b(what does|what do) (this|these|the|my) (document|file|paper|syllab)",
-    r"\b(this|these) \d+ (document|file|paper|syllab)",
-    r"\bin (this|these|the|my) (document|file|paper|attachment|syllab)",
+    r"\b(tell me|what) about (this|these|the) (document|file|paper|syllab|case)",
+    r"\buploaded (document|file|paper|syllab|case)",
+    r"\b(read|analyze|review|parse|look at) (this|these|the|my) (document|file|paper|attachment|syllab|case)",
+    r"\b(what does|what do) (this|these|the|my) (document|file|paper|syllab|case)",
+    r"\b(this|these) \d+ (document|file|paper|syllab|case)",
+    r"\bin (this|these|the|my) (document|file|paper|attachment|syllab|case)",
+    # Explicit reference phrases — user points at something they attached
+    r"\breferring to this\b",
+    r"\bbased on this (document|file|case|paper|attachment)?\b",
+    r"\busing this (document|file|case|paper|attachment)?\b",
+    r"\bfrom this (document|file|case|paper|attachment)?\b",
+    r"\bthe attached (document|file|case|paper)\b",
+    r"\bthe (document|file|case|paper) (i |I )?(attached|uploaded|shared|provided)\b",
+    r"\bthis attached\b",
+    r"\bthis case (i|I) (attached|shared|uploaded|provided)\b",
 ]
 
 # Patterns that signal the user wants cross-referencing against the knowledge base.
@@ -372,6 +430,7 @@ def classify_intent(message: str, has_attachments: bool = False) -> IntentResult
                     prompt_suffix=definition["prompt_suffix"],
                     use_knowledge_base=use_kb,
                     preferred_provider=definition.get("preferred_provider"),
+                    max_tokens=definition.get("max_tokens"),
                 )
 
     # Fallback: generalist agent — comprehensive, well-structured responses
