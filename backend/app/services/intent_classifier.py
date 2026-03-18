@@ -27,7 +27,8 @@ _CITATION_POLICY = (
     "NEVER write 'Source 1', 'Source 2', 'the document', or 'according to the sources' in prose — "
     "use bracket markers only. Every factual claim must carry at least one marker. "
     "CRITICAL: Citation markers are TOKENS ONLY — [1], [AI], [AI:1,3]. "
-    "NEVER embed text inside a marker. Do NOT write [AI: explanation], [AI: text here], or any variant with words inside the brackets."
+    "NEVER embed text inside a marker. Do NOT write [AI: explanation], [AI: text here], or any variant with words inside the brackets. "
+    "NEVER place a citation marker at the START of a sentence — markers must always follow the claim they support, not precede it."
 )
 
 
