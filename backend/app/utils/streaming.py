@@ -6,6 +6,54 @@ import traceback
 
 logger = logging.getLogger(__name__)
 
+PROVIDER_NAMES = {
+    "openai": "OpenAI",
+    "claude": "Claude",
+    "mistral": "Mistral",
+    "cohere": "Cohere",
+}
+
+
+def _friendly_error(exc: Exception, provider: str) -> str:
+    """Map a provider exception to a short, user-facing message."""
+    raw = str(exc).lower()
+    name = PROVIDER_NAMES.get(provider, provider.capitalize())
+
+    # Rate limit (HTTP 429)
+    if "429" in raw or "rate limit" in raw or "rate_limit" in raw or "1300" in raw:
+        return (
+            f"{name} is currently rate-limited. Please wait a moment and try again, "
+            "or switch to a different provider."
+        )
+    # Overloaded / service unavailable (HTTP 529 / 503)
+    if "529" in raw or "503" in raw or "overloaded" in raw or "unavailable" in raw:
+        return (
+            f"{name} is experiencing high traffic right now. "
+            "Please try again in a few seconds."
+        )
+    # Auth / API key issues (HTTP 401 / 403)
+    if "401" in raw or "403" in raw or "unauthorized" in raw or "invalid api key" in raw or "api key" in raw:
+        return (
+            f"There's an authentication issue with {name}. "
+            "Please check your API key in Settings."
+        )
+    # Network / connection errors
+    if "timeout" in raw or "connection" in raw or "network" in raw:
+        return (
+            f"Could not reach {name}. Please check your connection and try again."
+        )
+    # Context / token limit exceeded
+    if "context" in raw and ("length" in raw or "limit" in raw):
+        return (
+            "The conversation is too long for this provider. "
+            "Try starting a new discussion or shortening your message."
+        )
+    # Generic fallback
+    return (
+        f"{name} returned an unexpected error. Please try again, "
+        "or switch to a different provider."
+    )
+
 
 async def create_sse_response(
     generator: AsyncGenerator[str, None],
@@ -37,10 +85,10 @@ async def create_sse_response(
         # Log the full error with traceback
         logger.error(f"Streaming error from {provider}: {type(e).__name__}: {e}")
         logger.error(traceback.format_exc())
-        # Send error event
+        # Send a user-friendly error message instead of the raw exception
         error_data = json.dumps({
             "type": "error",
-            "error": f"{type(e).__name__}: {str(e)}",
+            "error": _friendly_error(e, provider),
             "provider": provider
         })
         yield f"data: {error_data}\n\n"
