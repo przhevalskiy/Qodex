@@ -176,7 +176,7 @@ const allIntents = [
   { key: 'explain', label: 'Explainer', desc: 'Simplified — may elaborate beyond sources' },
   { key: 'compare', label: 'Comparison', desc: 'Evidence-based, side-by-side' },
   { key: 'case_analysis', label: 'Case Analysis', desc: 'Analyzes existing sources as a case' },
-  { key: 'builder', label: 'Builder', desc: 'Full docs from scratch — cases, syllabi, reports' },
+  { key: 'builder', label: 'Builder', desc: 'Full documents from scratch' },
   { key: 'generate_questions', label: 'Assessment', desc: 'Quiz & exam from source content' },
   { key: 'critique', label: 'Critique', desc: 'Strengths & gaps analysis' },
   { key: 'methodology', label: 'Methodology', desc: 'Research design from sources' },
