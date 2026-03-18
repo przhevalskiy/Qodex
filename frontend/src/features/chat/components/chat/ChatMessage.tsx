@@ -163,7 +163,7 @@ const intentDescriptions: Record<string, string> = {
   explain: 'Simplifies retrieved content using definitions and analogies. May elaborate beyond direct source text to aid understanding — treat as a guided interpretation, not a verbatim quote.',
   compare: 'Analyzes retrieved sources across defined dimensions. Evidence-backed synthesis with balanced presentation of each side.',
   case_analysis: 'Analyzes existing source material framed as a case — context, stakeholders, challenge, evidence, outcomes. All claims grounded in sources.',
-  builder: 'Builds full long-form documents from scratch — case studies, syllabi, reports, proposals. Extended output with narrative prose. High compute, Claude only.',
+  builder: 'Full documents from scratch — case studies, syllabi, reports, and proposals.',
   generate_questions: 'Creates assessment questions directly from retrieved source content across Bloom\'s Taxonomy levels.',
   critique: 'Balanced critical analysis of retrieved content — strengths, gaps, methodological concerns, and alternative perspectives.',
   methodology: 'Reviews research design, data sources, and analytical approach from retrieved materials. Distinguishes retrieved facts from interpretation.',
