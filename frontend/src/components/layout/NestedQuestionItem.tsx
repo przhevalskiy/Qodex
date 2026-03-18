@@ -9,7 +9,9 @@ interface NestedQuestionItemProps {
 
 export function NestedQuestionItem({ question, onQuestionSelect }: NestedQuestionItemProps) {
   const [showSubMenu, setShowSubMenu] = useState(false);
-  const [subMenuStyle, setSubMenuStyle] = useState<React.CSSProperties>({ visibility: 'hidden' });
+  const SUBMENU_WIDTH = 240;
+  const hiddenStyle: React.CSSProperties = { visibility: 'hidden', position: 'fixed', left: '-9999px', width: `${SUBMENU_WIDTH}px` };
+  const [subMenuStyle, setSubMenuStyle] = useState<React.CSSProperties>(hiddenStyle);
   const itemRef = useRef<HTMLButtonElement>(null);
   const subMenuRef = useRef<HTMLDivElement>(null);
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -19,7 +21,7 @@ export function NestedQuestionItem({ question, onQuestionSelect }: NestedQuestio
     if (showSubMenu && itemRef.current && subMenuRef.current) {
       const rect = itemRef.current.getBoundingClientRect();
       const menuHeight = subMenuRef.current.offsetHeight;
-      const menuWidth = 240;
+      const menuWidth = SUBMENU_WIDTH;
       const gap = 4;
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
@@ -58,7 +60,7 @@ export function NestedQuestionItem({ question, onQuestionSelect }: NestedQuestio
     }
     hoverTimeoutRef.current = setTimeout(() => {
       setShowSubMenu(false);
-      setSubMenuStyle({ visibility: 'hidden' });
+      setSubMenuStyle(hiddenStyle);
     }, 100);
   };
 
@@ -75,7 +77,7 @@ export function NestedQuestionItem({ question, onQuestionSelect }: NestedQuestio
     }
     hoverTimeoutRef.current = setTimeout(() => {
       setShowSubMenu(false);
-      setSubMenuStyle({ visibility: 'hidden' });
+      setSubMenuStyle(hiddenStyle);
     }, 100);
   };
 

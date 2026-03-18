@@ -5,7 +5,7 @@ import { SampleQuestion } from '../types/sampleQuestions';
 export const SAMPLE_QUESTIONS: SampleQuestion[] = [
   {
     // → Explainer intent
-    main: "Explain carbon pricing mechanisms in simple terms",
+    main: "Explain a concept in plain terms",
     subQuestions: [
       { text: "Explain carbon pricing mechanisms in simple terms" },
       { text: "Break down how project finance works for renewable energy" },
@@ -15,7 +15,7 @@ export const SAMPLE_QUESTIONS: SampleQuestion[] = [
   },
   {
     // → Summary intent
-    main: "Summarize key themes across climate finance and carbon markets",
+    main: "Summarize & synthesize my sources",
     subQuestions: [
       { text: "Summarize the key findings across my uploaded documents" },
       { text: "What are the main themes in my syllabi?" },
@@ -25,7 +25,7 @@ export const SAMPLE_QUESTIONS: SampleQuestion[] = [
   },
   {
     // → Case Analysis intent
-    main: "Walk me through how a carbon credit project works in practice",
+    main: "Show me a real-world case study",
     subQuestions: [
       { text: "Frame this document as a case study with stakeholders and outcomes" },
       { text: "What are the key challenges in this renewable energy scenario?" },
@@ -35,7 +35,7 @@ export const SAMPLE_QUESTIONS: SampleQuestion[] = [
   },
   {
     // → Assessment intent
-    main: "Generate quiz questions on climate policy and carbon markets",
+    main: "Generate assessment questions",
     subQuestions: [
       { text: "Create Bloom's Taxonomy questions from my uploaded materials" },
       { text: "Build a quiz on carbon markets and climate finance" },
@@ -45,7 +45,7 @@ export const SAMPLE_QUESTIONS: SampleQuestion[] = [
   },
   {
     // → Lesson Plan intent
-    main: "Design a graduate lesson plan on climate adaptation",
+    main: "Design a lesson plan or teaching resource",
     subQuestions: [
       { text: "Create a lesson plan on climate adaptation for graduate students" },
       { text: "Design classroom activities around carbon pricing mechanisms" },
@@ -55,7 +55,7 @@ export const SAMPLE_QUESTIONS: SampleQuestion[] = [
   },
   {
     // → Critique intent
-    main: "What are the weaknesses in carbon credit verification research?",
+    main: "Critique this research or argument",
     subQuestions: [
       { text: "What are the methodological strengths and weaknesses of this paper?" },
       { text: "Identify gaps and biases in this climate policy analysis" },
@@ -65,7 +65,7 @@ export const SAMPLE_QUESTIONS: SampleQuestion[] = [
   },
   {
     // → Builder intent
-    main: "Build a full case study on renewable energy project finance from scratch",
+    main: "Build a full document from scratch",
     subQuestions: [
       { text: "Build a full case study on renewable energy project finance modeled after my sources" },
       { text: "Draft a complete syllabus for a graduate climate finance course" },
