@@ -161,8 +161,8 @@ INTENT_DEFINITIONS = [
     {
         # High-compute authoring intent: user wants to BUILD a long-form document from scratch —
         # case studies, syllabi, curricula, reports, proposals, frameworks, etc.
-        # Distinct from case_study (which analyzes existing material).
-        # Invariant: matched BEFORE case_study so "build a case study" routes here.
+        # Distinct from case_analysis (which analyzes existing material).
+        # Invariant: matched BEFORE case_analysis so "build a case study" routes here.
         "intent": "builder",
         "label": "Builder",
         "preferred_provider": "claude",
@@ -251,7 +251,7 @@ INTENT_DEFINITIONS = [
         ),
     },
     {
-        "intent": "case_study",
+        "intent": "case_analysis",
         "label": "Case Analysis",
         "preferred_provider": "mistral",
         "patterns": [
@@ -535,8 +535,8 @@ def classify_intent(message: str, has_attachments: bool = False) -> IntentResult
             "- Use tables when comparing options, frameworks, data, or features across dimensions\n"
             "- Use bold text to highlight key terms, conclusions, or important findings\n"
             "- Connect the answer to wider themes, implications, or related concepts where appropriate\n"
-            "- End with a brief synthesis or actionable insight\n\n"
-            "Do NOT use section headers like 'Direct Answer' or 'Key Takeaway' in your response.\n\n"
+            "- End with a 'Key Takeaway' sentence that captures the core idea — this sentence must also carry citation markers like any other factual claim\n\n"
+            "Do NOT use section headers like 'Direct Answer' in your response.\n\n"
             "Adapt depth to the complexity of the question. Simple questions deserve concise answers; "
             "complex questions warrant thorough exploration. Always ground claims in source material.\n\n"
             "Apply the inference policy: ground all factual claims in retrieved sources; "
