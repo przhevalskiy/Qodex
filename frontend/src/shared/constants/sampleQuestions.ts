@@ -25,11 +25,11 @@ export const SAMPLE_QUESTIONS: SampleQuestion[] = [
   },
   {
     // → Case Analysis intent
-    main: "Analyze this as a case study",
+    main: "Frame a real-world scenario as a case study",
     subQuestions: [
       { text: "Frame this document as a case study with stakeholders and outcomes" },
       { text: "What are the key challenges in this renewable energy scenario?" },
-      { text: "Analyze how this policy was implemented in practice" },
+      { text: "Analyze how this climate policy was implemented in practice" },
       { text: "What lessons can be drawn from this case for future projects?" }
     ]
   },
@@ -51,6 +51,16 @@ export const SAMPLE_QUESTIONS: SampleQuestion[] = [
       { text: "Design classroom activities around carbon pricing mechanisms" },
       { text: "Build a discussion guide for a renewable energy case" },
       { text: "Suggest learning objectives and assessments for an ESG course module" }
+    ]
+  },
+  {
+    // → Critique intent
+    main: "Critique this research or argument",
+    subQuestions: [
+      { text: "What are the methodological strengths and weaknesses of this paper?" },
+      { text: "Identify gaps and biases in this climate policy analysis" },
+      { text: "What counterarguments exist to the claims in my sources?" },
+      { text: "How should a reader calibrate confidence in these findings?" }
     ]
   },
   {
