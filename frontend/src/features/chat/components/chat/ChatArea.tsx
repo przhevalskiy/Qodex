@@ -48,7 +48,7 @@ export function ChatArea({ initialMessage }: ChatAreaProps) {
   const [inputValue, setInputValue] = useState('');
   const prevDiscussionIdRef = useRef<string | null>(null);
   const hasAutoSentRef = useRef(false);
-  const { messages, isStreaming, currentStreamContent, currentStreamProvider, currentStreamSources, currentStreamSuggestedQuestions, loadMessagesForDiscussion } =
+  const { messages, isStreaming, currentStreamContent, currentStreamProvider, currentStreamSources, currentStreamSuggestedQuestions, currentStreamIntent, currentStreamIsContinuation, loadMessagesForDiscussion } =
     useChatStore();
   const { activeDiscussionId, discussions } = useDiscussionStore();
   const { fetchProviders } = useProviderStore();
@@ -154,8 +154,10 @@ export function ChatArea({ initialMessage }: ChatAreaProps) {
       timestamp: '',
       sources: currentStreamSources.length > 0 ? currentStreamSources : undefined,
       suggested_questions: currentStreamSuggestedQuestions.length > 0 ? currentStreamSuggestedQuestions : undefined,
+      intent: currentStreamIntent?.intent || undefined,
+      is_continuation: currentStreamIsContinuation || undefined,
     };
-  }, [isStreaming, currentStreamContent, currentStreamProvider, currentStreamSources, currentStreamSuggestedQuestions]);
+  }, [isStreaming, currentStreamContent, currentStreamProvider, currentStreamSources, currentStreamSuggestedQuestions, currentStreamIntent, currentStreamIsContinuation]);
 
   const isEmpty = messages.length === 0 && !isStreaming;
 
