@@ -97,6 +97,18 @@ class ApiService {
     });
   }
 
+  /** Mark a discussion as publicly readable. Only the owner may call this. */
+  async shareDiscussion(id: string): Promise<Discussion> {
+    return this.request<Discussion>(`/api/discussions/${id}/share`, {
+      method: 'PATCH',
+    });
+  }
+
+  /** Fetch a shared discussion by ID. Caller must be authenticated; returns 404 if not public. */
+  async getSharedDiscussion(id: string): Promise<Discussion> {
+    return this.request<Discussion>(`/api/discussions/${id}/shared`);
+  }
+
   async addMessage(
     discussionId: string,
     content: string,

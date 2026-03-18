@@ -10,9 +10,10 @@ import './ChatHeader.css';
 interface ChatHeaderProps {
   discussionId: string;
   discussionTitle: string;
+  isPublic?: boolean;
 }
 
-export function ChatHeader({ discussionId, discussionTitle }: ChatHeaderProps) {
+export function ChatHeader({ discussionId, discussionTitle, isPublic = false }: ChatHeaderProps) {
   const [showShareModal, setShowShareModal] = useState(false);
   const [showAttachments, setShowAttachments] = useState(false);
   const { messages } = useChatStore();
@@ -83,6 +84,7 @@ export function ChatHeader({ discussionId, discussionTitle }: ChatHeaderProps) {
         onClose={() => setShowShareModal(false)}
         discussionId={discussionId}
         discussionTitle={discussionTitle}
+        isPublic={isPublic}
       />
     </>
   );

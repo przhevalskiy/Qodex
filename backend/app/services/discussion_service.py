@@ -110,6 +110,47 @@ class DiscussionService:
             {"is_active": False}
         ).eq("user_id", user_id).eq("is_active", True).execute()
 
+    def share_discussion(self, discussion_id: str, user_id: str) -> Optional[Discussion]:
+        """Set is_public=True on a discussion. Only the owner may call this.
+        Invariant: user_id filter ensures non-owners cannot share others' discussions."""
+        resp = (
+            self._client.table("discussions")
+            .update({"is_public": True, "updated_at": datetime.utcnow().isoformat()})
+            .eq("id", discussion_id)
+            .eq("user_id", user_id)
+            .execute()
+        )
+        if not resp.data:
+            return None
+        return self._row_to_discussion(resp.data[0])
+
+    def get_shared_discussion(self, discussion_id: str) -> Optional[Discussion]:
+        """Fetch a public discussion with its messages for any authenticated user.
+        Invariant: only returns data when is_public=True; caller must be authenticated
+        (enforced at the route layer via get_current_user_id)."""
+        resp = (
+            self._client.table("discussions")
+            .select("*")
+            .eq("id", discussion_id)
+            .eq("is_public", True)
+            .maybe_single()
+            .execute()
+        )
+        if not resp.data:
+            return None
+
+        discussion = self._row_to_discussion(resp.data)
+
+        msg_resp = (
+            self._client.table("messages")
+            .select("*")
+            .eq("discussion_id", discussion_id)
+            .order("created_at", desc=False)
+            .execute()
+        )
+        discussion.messages = [self._row_to_message(m) for m in (msg_resp.data or [])]
+        return discussion
+
     # ── Messages ─────────────────────────────────────────────────
 
     def add_message(self, discussion_id: str, message: Message) -> None:
@@ -161,6 +202,7 @@ class DiscussionService:
             id=row["id"],
             title=row.get("title", "New Chat"),
             is_active=row.get("is_active", False),
+            is_public=row.get("is_public", False),
             created_at=row.get("created_at", datetime.utcnow()),
             updated_at=row.get("updated_at", datetime.utcnow()),
             messages=[],

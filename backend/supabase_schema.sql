@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS discussions (
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   title TEXT NOT NULL DEFAULT 'New Chat',
   is_active BOOLEAN NOT NULL DEFAULT false,
+  is_public BOOLEAN NOT NULL DEFAULT false,  -- when true, any authenticated user can read via share link
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );
@@ -144,5 +145,34 @@ CREATE POLICY "Users can delete messages in own discussions"
       SELECT 1 FROM discussions
       WHERE discussions.id = messages.discussion_id
         AND discussions.user_id = auth.uid()
+    )
+  );
+
+-- ===========================================
+-- Share feature: cross-user read access
+-- Run this block if upgrading an existing DB
+-- (safe to run on a fresh schema too)
+-- ===========================================
+
+-- Add is_public to existing discussions table (no-op if column already exists)
+ALTER TABLE discussions ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT false;
+CREATE INDEX IF NOT EXISTS idx_discussions_is_public ON discussions(is_public) WHERE is_public = true;
+
+-- Any authenticated user can SELECT a discussion that the owner has made public.
+-- Invariant: owner-scoped policies above are unchanged; this only adds read for public rows.
+CREATE POLICY "Authenticated users can read public discussions"
+  ON discussions FOR SELECT
+  USING (is_public = true AND auth.uid() IS NOT NULL);
+
+-- Any authenticated user can SELECT messages whose parent discussion is public.
+-- Invariant: join back to discussions ensures is_public check cannot be bypassed.
+CREATE POLICY "Authenticated users can read messages in public discussions"
+  ON messages FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM discussions
+      WHERE discussions.id = messages.discussion_id
+        AND discussions.is_public = true
+        AND auth.uid() IS NOT NULL
     )
   );

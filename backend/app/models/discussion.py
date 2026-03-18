@@ -27,6 +27,7 @@ class Discussion(DiscussionBase):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     messages: List[Message] = Field(default_factory=list)
     is_active: bool = False
+    is_public: bool = False  # when True, any authenticated user can read via share link
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 

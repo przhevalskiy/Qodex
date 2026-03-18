@@ -32,6 +32,7 @@ export interface Discussion {
   title: string;
   messages: Message[];
   is_active: boolean;
+  is_public: boolean;  // true when shared via link; any authenticated user can read
   created_at: string;
   updated_at: string;
 }

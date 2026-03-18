@@ -17,6 +17,8 @@ interface DiscussionActions {
   setActiveDiscussionId: (id: string | null) => void;  // Local state only - no API call
   activateDiscussion: (id: string) => Promise<void>;   // API call to mark as active on backend
   updateDiscussionTitle: (id: string, title: string) => Promise<void>;
+  shareDiscussion: (id: string) => Promise<Discussion>;  // Mark as public; owner only
+  loadSharedDiscussion: (id: string) => Promise<Discussion>;  // Fetch any public discussion; auth required
   getActiveDiscussion: () => Discussion | undefined;
   clearError: () => void;
   reset: () => void;
@@ -104,6 +106,34 @@ export const useDiscussionStore = create<DiscussionStore>((set, get) => ({
       await api.activateDiscussion(id);
     } catch (error) {
       set({ error: (error as Error).message });
+    }
+  },
+
+  shareDiscussion: async (id: string) => {
+    try {
+      const updated = await api.shareDiscussion(id);
+      // Reflect is_public=true in local discussions list if present
+      set(state => ({
+        discussions: state.discussions.map(d =>
+          d.id === id ? { ...d, is_public: true } : d
+        ),
+      }));
+      return updated;
+    } catch (error) {
+      set({ error: (error as Error).message });
+      throw error;
+    }
+  },
+
+  loadSharedDiscussion: async (id: string) => {
+    // Fetches a public discussion without adding it to the sidebar list.
+    // Invariant: does NOT mutate `discussions` — shared views are read-only and
+    // must never appear in the owner's sidebar or be confused with the viewer's own threads.
+    try {
+      return await api.getSharedDiscussion(id);
+    } catch (error) {
+      set({ error: (error as Error).message });
+      throw error;
     }
   },
 

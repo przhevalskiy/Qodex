@@ -117,6 +117,35 @@ async def add_message(
     return message
 
 
+@router.patch("/{discussion_id}/share", response_model=Discussion)
+async def share_discussion(
+    discussion_id: str,
+    user_id: str = Depends(get_current_user_id),
+):
+    """Mark a discussion as publicly readable by any authenticated user.
+    Invariant: only the owner (user_id match) can share; non-owners receive 404."""
+    service = get_discussion_service()
+    discussion = service.share_discussion(discussion_id, user_id)
+    if not discussion:
+        raise HTTPException(status_code=404, detail="Discussion not found")
+    return discussion
+
+
+@router.get("/{discussion_id}/shared", response_model=Discussion)
+async def get_shared_discussion(
+    discussion_id: str,
+    user_id: str = Depends(get_current_user_id),  # auth required — non-logged-in users get 401
+):
+    """Fetch a public discussion with full message history for any authenticated user.
+    Invariant: returns 404 if discussion does not exist OR is not public (is_public=False),
+    preventing enumeration of private discussion IDs."""
+    service = get_discussion_service()
+    discussion = service.get_shared_discussion(discussion_id)
+    if not discussion:
+        raise HTTPException(status_code=404, detail="Discussion not found or not shared")
+    return discussion
+
+
 @router.post("/{discussion_id}/activate", response_model=Discussion)
 async def activate_discussion(
     discussion_id: str,

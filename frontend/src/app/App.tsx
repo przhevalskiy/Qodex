@@ -5,6 +5,7 @@ import { ChatArea } from '@/features/chat';
 import { useDiscussionStore } from '@/features/discussions';
 import { useDocumentStore } from '@/features/documents';
 import { useAuthStore, AuthModal } from '@/features/auth';
+import { SharedChatPage } from './SharedChatPage';
 import './App.css';
 
 function ChatPage() {
@@ -56,6 +57,28 @@ function AppLayout() {
   );
 }
 
+/**
+ * Wrapper for /share/:discussionId that enforces authentication.
+ * Invariant: if the user is not logged in, we redirect to /chat with a ?next=
+ * param so AuthModal can send them back after sign-in. The AuthModal is
+ * rendered at the App level so it will appear over this page.
+ */
+function SharedChatRoute() {
+  const { user } = useAuthStore();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!user) {
+      // Preserve the intended share URL so we can redirect back post-login
+      navigate(`/chat?next=${encodeURIComponent(location.pathname)}`, { replace: true });
+    }
+  }, [user, location.pathname, navigate]);
+
+  if (!user) return null;
+  return <SharedChatPage />;
+}
+
 function App() {
   const { user, isInitializing, initialize } = useAuthStore();
   const [isProcessingAuth, setIsProcessingAuth] = useState(false);
@@ -83,6 +106,18 @@ function App() {
     }
   }, [user, isProcessingAuth]);
 
+  // After login, redirect to ?next= share URL if present
+  useEffect(() => {
+    if (user) {
+      const params = new URLSearchParams(window.location.search);
+      const next = params.get('next');
+      if (next && next.startsWith('/share/')) {
+        window.history.replaceState(null, '', next);
+        window.location.reload();
+      }
+    }
+  }, [user]);
+
   // Show loading while initializing OR processing auth tokens
   if (isInitializing || isProcessingAuth) {
     return (
@@ -99,7 +134,12 @@ function App() {
 
   return (
     <BrowserRouter>
-      <AppLayout />
+      <Routes>
+        {/* Share route: full-width, no sidebar, auth-gated */}
+        <Route path="/share/:discussionId" element={<SharedChatRoute />} />
+        {/* Main app layout: sidebar + chat */}
+        <Route path="/*" element={<AppLayout />} />
+      </Routes>
       <AuthModal isOpen={!user} />
     </BrowserRouter>
   );

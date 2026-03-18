@@ -183,6 +183,7 @@ export function ChatArea({ initialMessage }: ChatAreaProps) {
             <ChatHeader
               discussionId={activeDiscussionId}
               discussionTitle={currentDiscussion.title}
+              isPublic={currentDiscussion.is_public}
             />
           )}
 
