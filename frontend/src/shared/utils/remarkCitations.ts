@@ -119,7 +119,7 @@ export const remarkCitations: Plugin<[], Root> = () => {
               hName: 'citation',
               hProperties: {
                 ai: "true",
-                aiSources
+                aisources: aiSources
               }
             },
             value: match[0]
