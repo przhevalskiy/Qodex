@@ -14,7 +14,7 @@ export function useSSE() {
   const navigate = useNavigate();
   const messageIdRef = useRef<string>('');
 
-  const { addMessage, startStream, appendToStream, setStreamSources, setStreamSuggestedQuestions, setStreamIntent, setStreamResearchMode, finalizeStream, cancelStream } = useChatStore();
+  const { addMessage, startStream, appendToStream, setStreamSources, setStreamSuggestedQuestions, setStreamIntent, setStreamTruncated, setStreamResearchMode, finalizeStream, cancelStream } = useChatStore();
   const { push: pushChunk, flush: flushChunks } = useChunkBuffer(appendToStream);
   // appendToStream is passed to the chunk buffer — not called directly
   const { activeDiscussionId, updateDiscussionTitle } = useDiscussionStore();
@@ -55,6 +55,7 @@ export function useSSE() {
 
       try {
         const attachmentIds = attachments.map((a) => a.id);
+
         const stream = sseClient.streamChat({
           discussion_id: targetDiscussionId,
           message: content,
@@ -83,6 +84,7 @@ export function useSSE() {
             finalizeStream(messageIdRef.current);
             return;
           } else if (event.type === 'done') {
+            if (event.truncated) setStreamTruncated(true);
             flushChunks();
             finalizeStream(messageIdRef.current);
             break;
@@ -108,6 +110,7 @@ export function useSSE() {
       setStreamSources,
       setStreamSuggestedQuestions,
       setStreamIntent,
+      setStreamTruncated,
       setStreamResearchMode,
       finalizeStream,
       cancelStream,

@@ -11,6 +11,7 @@ interface ChatState {
   currentStreamSuggestedQuestions: string[];
   currentStreamIntent: { intent: string; label: string } | null;
   currentStreamIsContinuation: boolean;
+  currentStreamTruncated: boolean;
   currentStreamResearchMode: string | null;
   error: string | null;
   isLoadingMessages: boolean;
@@ -27,6 +28,7 @@ interface ChatActions {
   setStreamSources: (sources: DocumentSource[]) => void;
   setStreamSuggestedQuestions: (questions: string[]) => void;
   setStreamIntent: (intent: string, label: string, isContinuation?: boolean) => void;
+  setStreamTruncated: (truncated: boolean) => void;
   setStreamResearchMode: (mode: string) => void;
   finalizeStream: (messageId: string) => void;
   gracefulStop: (messageId: string, discussionId: string) => void;
@@ -87,6 +89,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   currentStreamSuggestedQuestions: [],
   currentStreamIntent: null,
   currentStreamIsContinuation: false,
+  currentStreamTruncated: false,
   currentStreamResearchMode: null,
   error: null,
   isLoadingMessages: false,
@@ -137,6 +140,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       currentStreamSuggestedQuestions: [],
       currentStreamIntent: null,
       currentStreamIsContinuation: false,
+      currentStreamTruncated: false,
       currentStreamResearchMode: null,
       error: null,
     });
@@ -165,6 +169,10 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     }
   },
 
+  setStreamTruncated: (truncated: boolean) => {
+    set({ currentStreamTruncated: truncated });
+  },
+
   setStreamResearchMode: (mode: string) => {
     set({ currentStreamResearchMode: mode });
   },
@@ -182,20 +190,31 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       suggested_questions: state.currentStreamSuggestedQuestions.length > 0 ? state.currentStreamSuggestedQuestions : undefined,
       intent: state.currentStreamIntent?.intent || undefined,
       is_continuation: state.currentStreamIsContinuation || undefined,
+      is_truncated: state.currentStreamTruncated || undefined,
       research_mode: (state.currentStreamResearchMode as Message['research_mode']) || undefined,
     };
 
-    set(state => ({
-      messages: [...state.messages, assistantMessage],
-      isStreaming: false,
-      currentStreamContent: '',
-      currentStreamProvider: null,
-      currentStreamSources: [],
-      currentStreamSuggestedQuestions: [],
-      currentStreamIntent: null,
-      currentStreamIsContinuation: false,
-      currentStreamResearchMode: null,
-    }));
+    set(state => {
+      // If this is a continuation, clear is_truncated on the previous truncated message
+      const updatedMessages = state.currentStreamIsContinuation
+        ? state.messages.map(m =>
+            m.is_truncated ? { ...m, is_truncated: undefined, suggested_questions: undefined } : m
+          )
+        : state.messages;
+
+      return {
+        messages: [...updatedMessages, assistantMessage],
+        isStreaming: false,
+        currentStreamContent: '',
+        currentStreamProvider: null,
+        currentStreamSources: [],
+        currentStreamSuggestedQuestions: [],
+        currentStreamIntent: null,
+        currentStreamIsContinuation: false,
+        currentStreamTruncated: false,
+        currentStreamResearchMode: null,
+      };
+    });
   },
 
   gracefulStop: (messageId: string, discussionId: string) => {
@@ -253,6 +272,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       currentStreamSources: [],
       currentStreamSuggestedQuestions: [],
       currentStreamIntent: null,
+      currentStreamIsContinuation: false,
+      currentStreamTruncated: false,
       currentStreamResearchMode: null,
     });
   },

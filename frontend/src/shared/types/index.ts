@@ -24,6 +24,7 @@ export interface Message {
   suggested_questions?: string[];  // AI-generated follow-up questions
   intent?: string;  // Detected intent: "summarize", "case_study", etc.
   is_continuation?: boolean;  // True when this response resumed a prior truncated response
+  is_truncated?: boolean;    // True when response was cut off by the token limit
   research_mode?: ResearchMode;  // Active research depth: "quick", "enhanced", "deep"
 }
 
@@ -153,6 +154,7 @@ export interface SSESourcesEvent {
 export interface SSEDoneEvent {
   type: 'done';
   provider: string;
+  truncated?: boolean;
 }
 
 export interface SSEErrorEvent {
