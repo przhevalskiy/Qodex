@@ -191,7 +191,14 @@ export function Sidebar() {
         onClick={() => setIsMobileMenuOpen(false)}
       />
 
-      <aside className={`sidebar ${isCollapsed ? 'collapsed' : ''} ${isMobileMenuOpen ? 'mobile-menu-open' : ''}`}>
+      <aside
+        className={`sidebar ${isCollapsed ? 'collapsed' : ''} ${isMobileMenuOpen ? 'mobile-menu-open' : ''}`}
+        onClick={(e) => {
+          if (!isCollapsed) return;
+          if ((e.target as HTMLElement).closest('button, a, input, [role="button"]')) return;
+          setIsCollapsed(false);
+        }}
+      >
       {/* Header */}
       <div className="sidebar-header">
         <div className="sidebar-logo">
@@ -402,6 +409,12 @@ export function Sidebar() {
         isOpen={showDeleteAllModal}
         onClose={() => setShowDeleteAllModal(false)}
         onConfirm={handleDeleteAll}
+      />
+
+      <div
+        className="sidebar-resize-handle"
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
       />
     </aside>
     </>

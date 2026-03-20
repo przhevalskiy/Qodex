@@ -8,10 +8,37 @@
   border-right: 1px solid var(--gray-200);
   flex-shrink: 0;
   transition: width 0.3s ease;
+  position: relative;
+}
+
+/* Resize handle — clickable right edge to collapse/expand */
+.sidebar-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -1px;
+  width: 2px;
+  height: 100%;
+  z-index: 10;
+  cursor: w-resize;
+  transition: background-color 0.15s ease;
+}
+
+.sidebar-resize-handle:hover {
+  background-color: var(--gray-200);
+}
+
+.sidebar.collapsed .sidebar-resize-handle {
+  cursor: e-resize;
 }
 
 .sidebar.collapsed {
   width: 70px;
+  cursor: e-resize;
+}
+
+.sidebar.collapsed button,
+.sidebar.collapsed a {
+  cursor: pointer;
 }
 
 /* Header */
