@@ -94,7 +94,7 @@ export function InlineCitation({ number, source, ai, resolvedAiSources }: Inline
           <span className="citation-tooltip-filename">{source.filename}</span>
         </div>
         <div className="citation-tooltip-preview citation-tooltip-cta">
-          Click to view source content used:
+          Click to view source content used here:
         </div>
         <div className="citation-tooltip-footer">
           <div className="citation-tooltip-score">
