@@ -142,6 +142,7 @@ interface ChatMessageProps {
   isStreaming?: boolean;
   onRetry?: (content: string) => void;
   onQuestionClick?: (question: string) => void;
+  onContinue?: () => void;
 }
 
 const intentLabels: Record<string, string> = {
@@ -250,7 +251,7 @@ const markdownComponents = {
     return <h4>{children}</h4>;
   },
   // Suppress numeric citations when no sources available; still render [AI] chips
-  citation({ number, ai }: { number?: number; ai?: string; aiSources?: string }) {
+  citation({ number, ai }: { number?: number; ai?: string; aisources?: string }) {
     if (ai) return <InlineCitation ai={true} />;
     return null;
   },
@@ -265,7 +266,7 @@ const markdownComponents = {
 
 const remarkPlugins = [remarkGfm, remarkCitations];
 
-export const ChatMessage = memo(function ChatMessage({ message, isStreaming, onRetry, onQuestionClick }: ChatMessageProps) {
+export const ChatMessage = memo(function ChatMessage({ message, isStreaming, onRetry, onQuestionClick, onContinue }: ChatMessageProps) {
   const isUser = message.role === 'user';
   const displayName = useAuthStore((s) => s.user?.user_metadata?.display_name) || useAuthStore((s) => s.user?.email?.split('@')[0]) || 'You';
   const AvatarIcon = getAvatarIcon(useAuthStore((s) => s.user?.user_metadata?.avatar_icon));
@@ -306,9 +307,9 @@ export const ChatMessage = memo(function ChatMessage({ message, isStreaming, onR
     // Return components with custom citation handler
     return {
       ...markdownComponents,
-      citation({ number, ai, aiSources }: { number?: number; ai?: string; aiSources?: string }) {
+      citation({ number, ai, aisources }: { number?: number; ai?: string; aisources?: string }) {
         if (ai) {
-          const nums = aiSources ? aiSources.split(',').map(n => parseInt(n.trim(), 10)).filter(Boolean) : [];
+          const nums = aisources ? aisources.split(',').map(n => parseInt(n.trim(), 10)).filter(Boolean) : [];
           const resolved = nums.map(n => message.sources?.find(s => s.citation_number === n)).filter(Boolean) as DocumentSource[];
           return <InlineCitation ai={true} resolvedAiSources={resolved} />;
         }
@@ -438,19 +439,27 @@ export const ChatMessage = memo(function ChatMessage({ message, isStreaming, onR
             {isStreaming ? message.content : processedContent}
           </ReactMarkdown>
 
+          {/* Continue chip — appears right after truncated output, before sources */}
+          {!isUser && !isStreaming && message.is_truncated && onContinue && (
+            <button className="continue-chip" onClick={onContinue}>
+              Continue On →
+            </button>
+          )}
+
           {/* Show source documents for assistant messages */}
           {!isUser && message.sources && message.sources.length > 0 && (
             <SourcesDisplay sources={message.sources} />
           )}
 
-          {/* Show suggested questions for assistant messages */}
-          {!isUser && message.suggested_questions && message.suggested_questions.length > 0 && onQuestionClick && (
+          {/* Show suggested questions for assistant messages — suppressed when response was truncated */}
+          {!isUser && !message.is_truncated && message.suggested_questions && message.suggested_questions.length > 0 && onQuestionClick && (
             <SuggestedQuestions
               questions={message.suggested_questions}
               onQuestionClick={onQuestionClick}
               isLoading={isStreaming}
             />
           )}
+
         </div>
       </div>
     </div>

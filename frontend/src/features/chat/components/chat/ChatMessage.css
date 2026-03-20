@@ -86,9 +86,8 @@
 /* Continuation chip — sits next to the primary intent chip */
 .message-intent.continuation {
   background-color: transparent;
-  color: var(--gray-400, #9ca3af);
-  border-color: var(--gray-200, #e5e7eb);
-  font-style: italic;
+  color: var(--gray-500);
+  border-color: var(--gray-300);
 }
 
 /* Intent Tooltip */
@@ -438,6 +437,61 @@
 .message-export:disabled {
   cursor: not-allowed;
   opacity: 0.5;
+}
+
+
+
+/* Continue chip — inline after truncated output, before sources */
+.continue-chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin: 10px 0 8px;
+  padding: 5px 14px;
+  border-radius: 20px;
+  border: none;
+  background: white;
+  color: var(--brand-600);
+  font-size: 13px;
+  cursor: pointer;
+  isolation: isolate;
+  overflow: hidden;
+  transition: color 0.2s;
+}
+
+
+.continue-chip::before {
+  content: '';
+  position: absolute;
+  width: 200%;
+  aspect-ratio: 1;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(0deg);
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    #3b82f6 60deg,
+    #2563eb 90deg,
+    transparent 150deg,
+    transparent 360deg
+  );
+  animation: continue-border-spin 1.6s linear infinite;
+  z-index: -1;
+}
+
+.continue-chip::after {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  border-radius: 19px;
+  background: white;
+  z-index: -1;
+}
+
+@keyframes continue-border-spin {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to   { transform: translate(-50%, -50%) rotate(360deg); }
 }
 
 /* Spinning animation for loader */

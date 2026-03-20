@@ -50,6 +50,7 @@ export function ChatArea({ initialMessage }: ChatAreaProps) {
   const hasAutoSentRef = useRef(false);
   const { messages, isStreaming, currentStreamContent, currentStreamProvider, currentStreamSources, currentStreamSuggestedQuestions, currentStreamIntent, currentStreamIsContinuation, loadMessagesForDiscussion } =
     useChatStore();
+
   const { activeDiscussionId, discussions } = useDiscussionStore();
   const { fetchProviders } = useProviderStore();
   const { sendMessage } = useSSE();
@@ -197,6 +198,7 @@ export function ChatArea({ initialMessage }: ChatAreaProps) {
                   message={message}
                   onRetry={() => handleRetry(message.id)}
                   onQuestionClick={handleQuestionClick}
+                  onContinue={message.is_truncated ? () => sendMessage('continue') : undefined}
                 />
               ))}
 
