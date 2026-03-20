@@ -29,6 +29,11 @@ _CITATION_POLICY = (
     "CRITICAL: Citation markers are TOKENS ONLY — [1], [AI], [AI:1,3]. "
     "NEVER embed text inside a marker. Do NOT write [AI: explanation], [AI: text here], or any variant with words inside the brackets. "
     "NEVER place a citation marker at the START of a sentence — markers must always follow the claim they support, not precede it. "
+    "CRITICAL PLACEMENT RULE for [AI:N,M] and [AI]: these markers MUST appear at the END of the inference sentence they label, "
+    "immediately before the sentence-ending period. NEVER place [AI:N,M] or [AI] immediately after a [N] numeric citation — "
+    "that position has no inference sentence before it. "
+    "CORRECT: 'Grid extension costs make solar the only viable option [AI:1,2].' "
+    "WRONG: '...grid connection costs [1]. [AI:1,2] Solar becomes viable...' "
     "This rule applies to ALL sentences including summaries, key takeaways, and concluding statements — they are not exempt from citation requirements."
 )
 
@@ -168,6 +173,8 @@ INTENT_DEFINITIONS = [
         "preferred_provider": "claude",
         "max_tokens": 12000,
         "patterns": [
+            # Explicit "case study" phrase match — catches "write a detailed case study", etc.
+            r"\b(build|create|write|draft|develop|construct|generate|produce)\b.{0,40}\bcase stud(y|ies)\b",
             r"\b(build|create|write|draft|develop|construct|generate|produce) (a |an |the |this |new |full |complete |entire )?(new |full |complete |entire )?(case|syllabus|syllabi|curriculum|curricula|course|report|proposal|framework|document|guide|handbook|plan)\b",
             r"\bmimick(ing)?\b",
             r"\bmodeled? after\b",
