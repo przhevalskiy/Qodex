@@ -299,6 +299,7 @@ class ChatRequest(BaseModel):
     temperature: float = 0.1
     max_tokens: int = 8192
     research_mode: ResearchMode = DEFAULT_RESEARCH_MODE
+    force_truncate: bool = False  # DEV ONLY: cap max_tokens to 150 to test truncation detection
 
 
 class ChatResponse(BaseModel):
@@ -396,17 +397,14 @@ async def stream_chat(
                 intent_result.preferred_provider = primary_defn.get("preferred_provider")
             if not intent_result.max_tokens:
                 intent_result.max_tokens = primary_defn.get("max_tokens") or 12000
-            # Build combined prompt: continuation anchor + primary intent structure
-            intent_result.prompt_suffix = (
-                CONTINUATION_INSTRUCTION + primary_defn["prompt_suffix"]
-            )
+            # Use ONLY the continuation instruction — appending the primary intent's
+            # prompt_suffix causes the model to restart the full response structure
+            # instead of picking up from the exact cut-off point.
+            intent_result.prompt_suffix = CONTINUATION_INSTRUCTION
         else:
             # No recoverable prior intent — treat as generalist continuation
             primary_intent_key = "generalist"
-            intent_result.prompt_suffix = (
-                CONTINUATION_INSTRUCTION
-                + INTENT_LOOKUP.get("generalist", {}).get("prompt_suffix", "")
-            )
+            intent_result.prompt_suffix = CONTINUATION_INSTRUCTION
             intent_result.max_tokens = intent_result.max_tokens or 12000
 
     # Resolve effective provider:
@@ -436,6 +434,21 @@ async def stream_chat(
     # facts from bleeding into the current RAG turn.
     raw_messages = disc_service.get_context_messages(request.discussion_id, limit=20)
     context_messages = _sanitize_history_messages(raw_messages)
+
+    # For continuation: replace the sanitized last assistant message with its full
+    # raw content so the model can see exactly where it left off and resume from there.
+    # Without this, the 300-char sanitization cap hides the cut-off point.
+    if intent_result.intent == "continuation":
+        last_raw_assistant = next(
+            (m for m in reversed(raw_messages) if m.role == MessageRole.ASSISTANT),
+            None,
+        )
+        if last_raw_assistant:
+            context_messages = [
+                last_raw_assistant if (m.role == MessageRole.ASSISTANT and m.id == last_raw_assistant.id)
+                else m
+                for m in context_messages
+            ]
 
     # Rewrite the follow-up query so Pinecone retrieves documents relevant
     # to the conversational context (resolves pronouns, implicit refs).
@@ -682,13 +695,21 @@ async def stream_chat(
 
         # Resolve effective token budget:
         # intent_result.max_tokens overrides the request default when the intent
-        # requires long-form generation (e.g. create_case needs 12000).
+        # requires long-form generation (e.g. builder needs 12000).
         # Invariant: intent override only raises the cap, never lowers it —
         # take the max so an explicit high request.max_tokens is always honoured.
         effective_max_tokens = max(
             request.max_tokens,
             intent_result.max_tokens or 0,
         )
+
+        # DEV: force_truncate overrides the token budget to a tiny value so
+        # truncation detection can be tested without needing a genuinely long response.
+        if request.force_truncate and intent_result.intent != "continuation":
+            effective_max_tokens = 150
+
+        # Mutable dict populated by the provider with stop_reason after stream ends.
+        stream_metadata: dict = {}
 
         # Wrap the provider stream to collect raw chunks before SSE serialization,
         # avoiding the cost of re-parsing our own JSON output.
@@ -701,6 +722,7 @@ async def stream_chat(
                 intent_prompt=intent_result.prompt_suffix,
                 research_prompt=research_config.prompt_enhancement,
                 image_attachments=image_attachments or None,
+                stream_metadata=stream_metadata,
             ):
                 full_response.append(chunk)
                 yield chunk
@@ -715,6 +737,8 @@ async def stream_chat(
         # Save assistant response to discussion after streaming completes
         response_time = int((time.time() - start_time) * 1000)
         full_response_text = "".join(full_response)
+        # Clean up stray space-before-punctuation artifacts (Mistral citation omission pattern)
+        full_response_text = re.sub(r' +([.!?])', r'\1', full_response_text)
 
         assistant_message = Message(
             id=str(uuid.uuid4()),
@@ -759,8 +783,14 @@ async def stream_chat(
             logger.warning(f"Failed to generate suggested questions: {e}")
             # Don't fail the whole request if question generation fails
 
+        # Determine if the response was truncated by the token limit
+        truncated = stream_metadata.get('stop_reason') == 'max_tokens'
+
         # Send done event after suggested questions
-        yield format_sse_event("done", {"provider": effective_provider})
+        yield format_sse_event("done", {"provider": effective_provider, "truncated": truncated})
+
+        # Persist truncation flag on the message so future sessions can detect it
+        assistant_message.is_truncated = truncated
 
         disc_service.add_message(request.discussion_id, assistant_message)
 
