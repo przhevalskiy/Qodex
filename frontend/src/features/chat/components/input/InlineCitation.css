@@ -167,12 +167,31 @@
 }
 
 .citation-tooltip-cta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   color: var(--gray-600, #4b5563);
   font-style: normal;
   font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.citation-tooltip-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.citation-tooltip-explore {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--gray-400, #9ca3af);
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.citation-tooltip-arrow {
+  color: var(--gray-400, #9ca3af);
+  flex-shrink: 0;
 }
 
 /* AI claim underline — highlights the sentence/clause attributed to AI */

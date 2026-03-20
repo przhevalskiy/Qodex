@@ -94,10 +94,13 @@ export function InlineCitation({ number, source, ai, resolvedAiSources }: Inline
           <span className="citation-tooltip-filename">{source.filename}</span>
         </div>
         <div className="citation-tooltip-preview citation-tooltip-cta">
-          Click to view source content used: <ArrowUpRight size={12} />
+          Click to view source content used:
         </div>
-        <div className="citation-tooltip-score">
-          Relevance: {Math.round(source.score * 100)}%
+        <div className="citation-tooltip-footer">
+          <div className="citation-tooltip-score">
+            Relevance: {Math.round(source.score * 100)}%
+          </div>
+          <span className="citation-tooltip-explore">Explore <ArrowUpRight size={16} className="citation-tooltip-arrow" /></span>
         </div>
       </div>
     </span>
