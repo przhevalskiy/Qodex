@@ -26,6 +26,7 @@ class MistralProvider(BaseProvider):
         intent_prompt: Optional[str] = None,
         research_prompt: Optional[str] = None,
         image_attachments: Optional[List[Dict]] = None,
+        stream_metadata: Optional[Dict] = None,
     ) -> AsyncGenerator[str, None]:
         """Stream completion from Mistral."""
         formatted_messages = []
@@ -44,7 +45,9 @@ class MistralProvider(BaseProvider):
                 "- Add [N] citations inline where information comes from source N\n"
                 "- Multiple sources can be cited together like [1][2]\n"
                 "- Be precise - cite at the claim level, not just at the end of paragraphs\n"
-                "- Natural placement - citations should feel unobtrusive\n"
+                "- Citations must immediately follow the claim with no space between the claim and the bracket: 'claim [N]' not 'claim  [N]' or 'claim .'\n"
+                "- NEVER end a sentence or bullet with a space before the period — if a citation follows, write 'claim [N].' not 'claim .' \n"
+                "- CRITICAL: [AI:N,M] and [AI] markers must appear at the END of the inference sentence, before its period. NEVER place them immediately after a [N] numeric citation. CORRECT: 'This implies X [AI:1,2].' WRONG: '...fact [1]. [AI:1,2] This implies X.'\n"
                 "- Cite from ALL sources that contain relevant information — do not omit retrieved sources that support the answer\n"
                 "- When adding context, explanation, or reasoning not directly supported by the retrieved sources, label it with [AI:N,M] or [AI] (see below)\n\n"
                 "INFERENCE POLICY — Two tiers:\n"
@@ -110,9 +113,17 @@ class MistralProvider(BaseProvider):
             max_tokens=max_tokens,
         )
 
+        last_finish_reason = None
         async for chunk in async_response:
             if chunk.data.choices and chunk.data.choices[0].delta.content:
                 yield chunk.data.choices[0].delta.content
+            if chunk.data.choices and chunk.data.choices[0].finish_reason:
+                last_finish_reason = chunk.data.choices[0].finish_reason
+
+        # Capture stop reason after stream completes
+        if stream_metadata is not None:
+            # Mistral uses "length" for token limit, "stop" for natural end
+            stream_metadata['stop_reason'] = 'max_tokens' if last_finish_reason == 'length' else 'end_turn'
 
     async def generate_suggested_questions(
         self,

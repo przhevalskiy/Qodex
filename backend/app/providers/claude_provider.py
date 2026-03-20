@@ -26,6 +26,7 @@ class ClaudeProvider(BaseProvider):
         intent_prompt: Optional[str] = None,
         research_prompt: Optional[str] = None,
         image_attachments: Optional[List[Dict]] = None,
+        stream_metadata: Optional[Dict] = None,
     ) -> AsyncGenerator[str, None]:
         """Stream completion from Claude."""
         # Claude uses a different message format
@@ -125,6 +126,10 @@ class ClaudeProvider(BaseProvider):
         ) as stream:
             async for text in stream.text_stream:
                 yield text
+            # Capture stop reason after stream completes
+            if stream_metadata is not None:
+                final = await stream.get_final_message()
+                stream_metadata['stop_reason'] = final.stop_reason  # "end_turn" or "max_tokens"
 
     async def generate_suggested_questions(
         self,

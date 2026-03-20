@@ -26,6 +26,7 @@ class BaseProvider(ABC):
         intent_prompt: Optional[str] = None,
         research_prompt: Optional[str] = None,
         image_attachments: Optional[List[Dict]] = None,
+        stream_metadata: Optional[Dict] = None,
     ) -> AsyncGenerator[str, None]:
         """
         Stream a completion response.
