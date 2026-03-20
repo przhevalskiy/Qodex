@@ -23,9 +23,6 @@
   transition: background-color 0.15s ease;
 }
 
-.sidebar-resize-handle:hover {
-  background-color: var(--gray-200);
-}
 
 .sidebar.collapsed .sidebar-resize-handle {
   cursor: e-resize;
