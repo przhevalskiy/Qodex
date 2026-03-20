@@ -739,6 +739,10 @@ async def stream_chat(
         full_response_text = "".join(full_response)
         # Clean up stray space-before-punctuation artifacts (Mistral citation omission pattern)
         full_response_text = re.sub(r' +([.!?])', r'\1', full_response_text)
+        # Remove [AI] (pure general knowledge) immediately following a numeric [N] citation —
+        # semantically contradictory. [N] means a source IS connected; [AI] means NO source.
+        # Grounded citation wins. Does NOT touch [AI:N,M] (valid attributed inference).
+        full_response_text = re.sub(r'(\[\d+(?:,\s*\d+)*\])\s*\[AI\]', r'\1', full_response_text)
 
         assistant_message = Message(
             id=str(uuid.uuid4()),
