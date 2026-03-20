@@ -16,7 +16,10 @@ interface ChatState {
   error: string | null;
   isLoadingMessages: boolean;
   _skipNextMessageLoad: boolean;
+  hoverPlaceholder: string;
 }
+
+
 
 interface ChatActions {
   setMessages: (messages: Message[]) => void;
@@ -35,6 +38,7 @@ interface ChatActions {
   cancelStream: () => void;
   clearMessages: () => void;
   clearError: () => void;
+  setHoverPlaceholder: (text: string) => void;
 }
 
 /**
@@ -94,6 +98,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   error: null,
   isLoadingMessages: false,
   _skipNextMessageLoad: false,
+  hoverPlaceholder: '',
 
   // Actions
   setMessages: (messages: Message[]) => {
@@ -283,4 +288,5 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   },
 
   clearError: () => set({ error: null }),
+  setHoverPlaceholder: (text: string) => set({ hoverPlaceholder: text }),
 }));

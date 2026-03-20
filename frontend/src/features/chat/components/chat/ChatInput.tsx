@@ -12,9 +12,11 @@ import './ChatInput.css';
 interface ChatInputProps {
   initialValue?: string;
   onValueChange?: (value: string) => void;
+  placeholder?: string;
 }
 
-export function ChatInput({ initialValue = '', onValueChange }: ChatInputProps) {
+export function ChatInput({ initialValue = '', onValueChange, placeholder }: ChatInputProps) {
+  const hoverPlaceholder = useChatStore((s) => s.hoverPlaceholder);
   const navigate = useNavigate();
   const [input, setInput] = useState(initialValue);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -103,7 +105,7 @@ export function ChatInput({ initialValue = '', onValueChange }: ChatInputProps) 
             value={input}
             onChange={(e) => handleInputChange(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ask anything..."
+            placeholder={hoverPlaceholder || placeholder || "Ask anything..."}
             disabled={isStreaming}
             rows={1}
             className="chat-textarea"

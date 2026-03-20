@@ -1,6 +1,7 @@
 import { useRef, useEffect, useLayoutEffect, useState } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { SampleQuestion } from '@/shared/types/sampleQuestions';
+import { useChatStore } from '@/features/chat';
 
 interface NestedQuestionItemProps {
   question: SampleQuestion;
@@ -8,6 +9,7 @@ interface NestedQuestionItemProps {
 }
 
 export function NestedQuestionItem({ question, onQuestionSelect }: NestedQuestionItemProps) {
+  const setHoverPlaceholder = useChatStore((s) => s.setHoverPlaceholder);
   const [showSubMenu, setShowSubMenu] = useState(false);
   const SUBMENU_WIDTH = 240;
   const hiddenStyle: React.CSSProperties = { visibility: 'hidden', position: 'fixed', left: '-9999px', width: `${SUBMENU_WIDTH}px` };
@@ -43,12 +45,10 @@ export function NestedQuestionItem({ question, onQuestionSelect }: NestedQuestio
   }, [showSubMenu]);
 
   const handleMouseEnter = () => {
-    // Clear any existing timeout
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
     }
-
-    // Show sub-menu after delay
+    setHoverPlaceholder(question.main);
     hoverTimeoutRef.current = setTimeout(() => {
       setShowSubMenu(true);
     }, 150);
@@ -58,6 +58,7 @@ export function NestedQuestionItem({ question, onQuestionSelect }: NestedQuestio
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
     }
+    setHoverPlaceholder('');
     hoverTimeoutRef.current = setTimeout(() => {
       setShowSubMenu(false);
       setSubMenuStyle(hiddenStyle);
@@ -75,6 +76,7 @@ export function NestedQuestionItem({ question, onQuestionSelect }: NestedQuestio
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
     }
+    setHoverPlaceholder('');
     hoverTimeoutRef.current = setTimeout(() => {
       setShowSubMenu(false);
       setSubMenuStyle(hiddenStyle);
@@ -127,6 +129,7 @@ export function NestedQuestionItem({ question, onQuestionSelect }: NestedQuestio
             <button
               key={index}
               className="sample-subquestion-item"
+              onMouseEnter={() => setHoverPlaceholder(subQuestion.text)}
               onClick={() => handleSubQuestionClick(subQuestion.text)}
             >
               {subQuestion.text}
