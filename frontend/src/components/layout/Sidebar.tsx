@@ -9,6 +9,7 @@ import { useAuthStore } from '@/features/auth';
 import { Discussion } from '@/shared/types';
 import logo from '../../assets/qodex-logo.png';
 import { SampleQuestionsDropdown } from './SampleQuestionsDropdown';
+import { exportHistoryToPDF } from '@/shared/services/pdfExport';
 import { ContactModal } from './ContactModal';
 import { AccountSettingsModal } from './AccountSettingsModal';
 import { DeleteAllModal } from './DeleteAllModal';
@@ -97,20 +98,8 @@ export function Sidebar() {
   }, [showConversationsMenu]);
 
   const handleExportHistory = () => {
-    const exportData = discussions.map(d => ({
-      title: d.title || d.messages[0]?.content.slice(0, 60) || 'Untitled',
-      messages: d.messages.length,
-      created: new Date(d.created_at).toLocaleString(),
-      updated: new Date(d.updated_at).toLocaleString(),
-    }));
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `qodex-history-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
     setShowConversationsMenu(false);
+    exportHistoryToPDF(discussions);
   };
 
   const handleNewChat = () => {
