@@ -7,7 +7,7 @@ services:
   - type: web
     name: qodex-backend
     runtime: python
-    plan: free
+    plan: starter
     rootDir: backend
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
@@ -23,13 +23,9 @@ services:
       - key: SUPABASE_JWT_SECRET
         sync: false
       # AI Provider API Keys
-      - key: OPENAI_API_KEY
-        sync: false
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: MISTRAL_API_KEY
-        sync: false
-      - key: COHERE_API_KEY
         sync: false
       # Pinecone Vector Database
       - key: PINECONE_API_KEY
@@ -48,14 +44,10 @@ services:
       - key: LOG_LEVEL
         value: INFO
       # AI Models (optional overrides)
-      - key: OPENAI_MODEL
-        value: gpt-4.1
       - key: ANTHROPIC_MODEL
-        value: claude-sonnet-4-5-20250929
+        value: claude-sonnet-4-6
       - key: MISTRAL_MODEL
         value: mistral-large-latest
-      - key: COHERE_MODEL
-        value: command-a-03-2025
 
   # Frontend - Static Site with Global CDN
   - type: web
