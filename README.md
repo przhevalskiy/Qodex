@@ -7,24 +7,24 @@ Qodex is an enterprise-grade AI chat platform with multi-provider support, retri
 ## Key Features
 
 ### Multi-Provider AI Chat
-- Switch between Claude (Sonnet), Mistral (Large), OpenAI (GPT-4.1), and Cohere (Command)
+- Switch between **Claude (Sonnet)** and **Mistral (Large)** as primary chat providers
 - Real-time SSE streaming with graceful truncation and **Continue On** for long responses
 - Provider-specific prompt engineering and citation policies
-- **Auto mode**: intent-based provider routing (e.g. Claude for case studies, Mistral for summaries)
+- **Auto mode**: intent-based provider routing (e.g. Claude for explanations and critiques, Mistral for summaries and lesson plans)
 - Visual provider toggles on desktop; modal selector on mobile
 
 ### Advanced RAG Pipeline
 - **Pinecone Vector Database**: Semantic search with cosine similarity (text-embedding-3-small, 1536 dims)
 - **Entity-First Retrieval**: N-gram extraction with instructor name matching to prevent cross-contamination
 - **Research Modes**: Quick (7 sources, score ≥ 0.40), Enhanced (12 sources, ≥ 0.30), Deep (16 sources, ≥ 0.25)
-- **Intent Classification**: 8 specialized intents (Summarize, Explain, Compare, Case Study, Research Brief, etc.) with zero-latency regex matching
+- **Intent Classification**: 11 specialized intents (Summarize, Explain, Compare, Builder, Case Analysis, Assessment, Critique, Methodology, Lesson Plan, etc.) with zero-latency regex matching
 - **Smart Context Injection**: Token-aware chunking (500 tokens/chunk, 50 token overlap) with structure preservation
 - **Query Rewriting**: Mistral-based pronoun resolution for follow-up questions (e.g. "tell me more about it")
 
 ### Citation System
 - **Inline markers**: `[N]` (grounded fact from source N), `[AI:N,M]` (inference extending sources N and M), `[AI]` (pure general knowledge)
 - Clickable citation chips with relevance score tooltip and document preview
-- Backend post-processing ensures `[N]` and `[AI]` are never placed on the same claim (contradictory)
+- Backend post-processing ensures `[N]` and `[AI]` are never placed on the same claim (semantically contradictory)
 - Remark plugin parses markers from streamed markdown for interactive rendering
 
 ### Document & Attachment Management
@@ -87,18 +87,33 @@ Qodex is an enterprise-grade AI chat platform with multi-provider support, retri
 - `get_current_user_id()` FastAPI dependency injection on all protected endpoints
 - Email confirmation handling via URL hash in frontend
 
-**AI Providers** (registered via `ProviderRegistry` singleton)
-- **Claude** (`claude-sonnet-4-5-20250929`) — Anthropic SDK, async streaming
-- **Mistral** (`mistral-large-latest`) — streaming completions + fast query rewriting
-- **OpenAI** (`gpt-4.1`) — AsyncOpenAI; also used exclusively for text-embedding-3-small embeddings
-- **Cohere** (`command-a-03-2025`) — optional, configure with `COHERE_API_KEY`
+**AI Providers** (auto-registered at module load via `ProviderRegistry`)
+- **Claude** (`claude-sonnet-4-5-20250929`) — Anthropic SDK, async streaming, vision support
+- **Mistral** (`mistral-large-latest`) — async streaming, vision support, fast query rewriting
+- **OpenAI** — AsyncOpenAI used exclusively for `text-embedding-3-small` embeddings; not a chat provider
 
 **Services** (singleton pattern via `get_*_service()`)
 - **DiscussionService**: Supabase-backed CRUD for discussions and messages
 - **DocumentService**: Document extraction, token-aware chunking, Pinecone batch embedding, instructor index
 - **AttachmentService**: In-memory conversation-scoped file storage; reuses DocumentService text extraction
 - **PineconeService**: Vector DB client with lazy initialization and batch upsert
-- **IntentClassifier**: Regex-based intent detection, 8 intents + generalist fallback, zero-latency
+- **IntentClassifier**: Regex-based intent detection, 11 intents + generalist fallback, zero-latency
+
+**Intent Classification** (11 intents)
+
+| Intent | Label | Preferred Provider |
+|--------|-------|--------------------|
+| `continuation` | Continuing Response | inherited |
+| `summarize` | Summary | Mistral |
+| `explain` | Explainer | Claude |
+| `compare` | Comparison | Mistral |
+| `builder` | Builder | Claude |
+| `case_analysis` | Case Analysis | Mistral |
+| `generate_questions` | Assessment | Claude |
+| `critique` | Critique | Claude |
+| `methodology` | Methodology | Claude |
+| `lesson_plan` | Lesson Plan | Mistral |
+| `generalist` | Generalist (fallback) | Mistral |
 
 **RAG Pipeline** (4-stage)
 1. **Query Embedding**: User query → text-embedding-3-small → 1536-dim vector
@@ -113,8 +128,8 @@ Qodex is an enterprise-grade AI chat platform with multi-provider support, retri
 - **Embedding**: Batch upsert to Pinecone with document_id + chunk_index metadata
 
 **Streaming Pipeline**
-- SSE events emitted in order: `sources` → `intent` → `chunk` (repeated) → `suggested_questions` → `discussion_title` → `done`
-- Continuation detection: if prior assistant message is marked `is_truncated`, rewrites query to "continue from exact cut-off"
+- SSE events emitted in order: `discussion_title` → `sources` → `intent` → `chunk` (repeated) → `suggested_questions` → `done`
+- Continuation detection: if prior assistant message is marked `is_truncated`, rewrites query to resume from exact cut-off
 - Stale citation sanitization: strips `[N]` markers from prior messages before sending to model (prevents hallucinated re-citations)
 - Post-processing: removes contradictory `[N][AI]` co-occurrences from Mistral output via `re.sub`
 
@@ -210,9 +225,8 @@ Qodex is an enterprise-grade AI chat platform with multi-provider support, retri
 | **Database** | Supabase (PostgreSQL) | Latest |
 | | Pinecone | Latest |
 | **AI Providers** | Anthropic SDK | Latest |
-| | Mistral SDK | Latest |
-| | OpenAI SDK | Latest (embeddings) |
-| | Cohere SDK | Latest (optional) |
+| | Mistral SDK | ≥1.0.0, <2.0.0 |
+| | OpenAI SDK | Latest (embeddings only) |
 | **Document Processing** | PyPDF | Latest |
 | | python-docx | Latest |
 | | tiktoken | Latest |
@@ -229,7 +243,7 @@ Qodex is an enterprise-grade AI chat platform with multi-provider support, retri
 - **Node.js 18+**
 - **Supabase account** (auth + database)
 - **Pinecone account** (vector search)
-- **API keys** for AI providers (Anthropic and Mistral required; OpenAI required for embeddings; Cohere optional)
+- **API keys**: Anthropic and Mistral (chat); OpenAI (embeddings — required)
 
 ---
 
@@ -311,7 +325,7 @@ npm run dev
 1. Create project at https://supabase.com/dashboard
 2. Get credentials: **Project Settings → API**
    - Project URL → `SUPABASE_URL`
-   - `anon public` key → `SUPABASE_KEY` (frontend) + `VITE_SUPABASE_ANON_KEY`
+   - `anon public` key → `SUPABASE_KEY` + `VITE_SUPABASE_ANON_KEY`
    - `service_role` key → `SUPABASE_SERVICE_ROLE_KEY`
    - **Settings → API → JWT Settings → JWT Secret** → `SUPABASE_JWT_SECRET` (required)
 3. Run `backend/supabase_schema.sql` in SQL Editor
@@ -346,13 +360,10 @@ SUPABASE_JWT_SECRET=your-jwt-secret
 ANTHROPIC_API_KEY=sk-ant-...
 MISTRAL_API_KEY=...
 OPENAI_API_KEY=sk-...          # Required for embeddings (text-embedding-3-small)
-COHERE_API_KEY=...             # Optional
 
 # AI Model Overrides (optional — defaults shown)
 ANTHROPIC_MODEL=claude-sonnet-4-5-20250929
 MISTRAL_MODEL=mistral-large-latest
-OPENAI_MODEL=gpt-4.1
-COHERE_MODEL=command-a-03-2025
 
 # Pinecone
 PINECONE_API_KEY=...
@@ -361,7 +372,7 @@ PINECONE_ENVIRONMENT=us-east-1
 PINECONE_HOST=...              # Optional — uses index name if omitted
 
 # Application
-CORS_ORIGINS=http://localhost:5173
+CORS_ORIGINS=http://localhost:5173,http://localhost:3000
 DEBUG=true
 LOG_LEVEL=INFO
 ```
@@ -396,16 +407,14 @@ Qodex/
 │   │   │   └── supabase_client.py
 │   │   ├── models/
 │   │   │   ├── discussion.py
-│   │   │   ├── message.py           # DocumentSource, MessageRole
+│   │   │   ├── message.py           # DocumentSource, MessageRole, Message
 │   │   │   ├── document.py
 │   │   │   └── attachment.py
 │   │   ├── providers/
 │   │   │   ├── __init__.py          # ProviderRegistry
 │   │   │   ├── base.py              # BaseProvider abstract
-│   │   │   ├── claude_provider.py
-│   │   │   ├── mistral_provider.py
-│   │   │   ├── openai_provider.py
-│   │   │   └── cohere_provider.py
+│   │   │   ├── claude_provider.py   # Anthropic streaming + vision
+│   │   │   └── mistral_provider.py  # Mistral streaming + vision
 │   │   ├── services/
 │   │   │   ├── discussion_service.py
 │   │   │   ├── document_service.py  # Extraction, chunking, Pinecone indexing
@@ -463,26 +472,25 @@ Run `backend/supabase_schema.sql` in your Supabase SQL Editor.
 **Tables:**
 
 1. **profiles** — Auto-created on signup via trigger
-   - `id` (UUID, FK auth.users), `email`, `display_name`, `created_at`
+   - `id` (UUID, FK auth.users ON DELETE CASCADE), `email`, `display_name`, `created_at`
+   - RLS: users can read and update their own profile
 
 2. **discussions**
-   - `id`, `user_id` (FK profiles), `title`, `is_active`, `is_public`, `created_at`, `updated_at`
+   - `id`, `user_id` (FK profiles), `title` (default `'New Chat'`), `is_active`, `is_public`, `created_at`, `updated_at`
    - `is_public`: enables shareable links via `/share/:id`
+   - RLS: owner full CRUD; any authenticated user can read public discussions
 
 3. **messages**
-   - `id`, `discussion_id`, `role` (user/assistant/system), `content`, `provider`
+   - `id`, `discussion_id` (FK discussions ON DELETE CASCADE)
+   - `role` (CHECK: user/assistant/system), `content`, `provider`
    - `tokens_used`, `response_time_ms`
    - `sources`, `citations`, `suggested_questions` (JSONB)
-   - `intent`, `research_mode`, `is_truncated`
-   - `created_at`
+   - `intent`, `research_mode`, `created_at`
+   - RLS: mirrors discussion ownership; public discussion messages readable by any authenticated user
 
 4. **document_formatted_chunks** — L2 format cache
    - `id`, `document_id`, `chunk_id`, `formatted_content`, `created_at`
    - Unique on `(document_id, chunk_id)` — persists AI-formatted chunk previews for instant document opens
-
-**RLS Policies:**
-- Users access only their own discussions and messages
-- Authenticated users can read any `is_public = true` discussion and its messages
 
 **Trigger:**
 - `on_auth_user_created` — auto-creates profile row on Supabase auth signup
@@ -534,13 +542,13 @@ cd frontend && npm install && npm run build
            yield chunk
    ```
 
-2. Register in `backend/app/providers/__init__.py`:
+2. Register at module level (providers auto-register on import):
    ```python
-   from .new_provider import NewProvider
+   from app.providers import registry
    registry.register("new_provider", NewProvider, "Display Name", "model-name")
    ```
 
-3. Add API key to `backend/app/core/config.py` and `.env`
+3. Add API key to `backend/app/core/config.py` and `backend/.env`
 
 ### File Conventions
 
@@ -576,10 +584,10 @@ cd frontend && npm install && npm run build
 **RAG not returning results**
 - Verify Pinecone index exists with name matching `PINECONE_INDEX_NAME` and dimension 1536
 - Confirm documents were uploaded successfully; check `backend/data/document_registry.json`
-- Try lowering research mode to Deep for a broader score threshold (≥ 0.25)
+- Try switching to Deep research mode for a broader score threshold (≥ 0.25)
 
 **Streaming not working**
-- Verify provider API keys are valid and have sufficient quota
+- Verify Anthropic and Mistral API keys are valid and have sufficient quota
 - Check CORS: `CORS_ORIGINS` in backend `.env` must include the frontend origin
 - Check browser console for SSE connection errors
 
@@ -596,7 +604,6 @@ MIT License — see LICENSE file for details.
 - Anthropic for Claude models
 - Mistral AI for Mistral models
 - OpenAI for embedding API (text-embedding-3-small)
-- Cohere for Command models
 - Pinecone for vector database
 - Supabase for authentication and PostgreSQL
 - FastAPI and React communities
