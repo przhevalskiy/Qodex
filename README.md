@@ -1,6 +1,6 @@
 # Qodex — AI-Powered Knowledge Base Chat Platform
 
-Qodex is an enterprise-grade AI chat platform with multi-provider support, retrieval-augmented generation (RAG), and intelligent document processing. Built for educational institutions and knowledge-intensive organizations, Qodex enables users to have meaningful conversations with AI models while seamlessly integrating with their document repositories.
+AI-powered research platform with multi-provider RAG, sentence-level citation attribution, and causal bridge inference. Built for academic and institutional research, featuring auditable reasoning chains, document-grounded responses, and real-time streaming across Claude and Mistral.
 
 ---
 
@@ -595,7 +595,11 @@ cd frontend && npm install && npm run build
 
 ## License
 
-MIT License — see LICENSE file for details.
+Copyright (c) 2024 Aleksey Przhevalskiy. All rights reserved.
+
+Licensed under the [Business Source License 1.1](LICENSE). Production use requires a commercial license from the Licensor. The Licensed Work will convert to MIT License on 2029-03-24.
+
+For commercial licensing inquiries, contact: przalex2@gmail.com
 
 ---
 

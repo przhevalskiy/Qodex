@@ -1,3 +1,6 @@
+# Copyright (c) 2024 Aleksey Przhevalskiy. All rights reserved.
+# Licensed under the Business Source License 1.1. See LICENSE for details.
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager

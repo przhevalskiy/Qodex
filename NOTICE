@@ -1,0 +1,28 @@
+Qodex
+Copyright (c) 2024 Aleksey Przhevalskiy. All rights reserved.
+
+This product is licensed under the Business Source License 1.1.
+See the LICENSE file for full terms.
+
+---
+
+Third-Party Acknowledgments
+
+This software incorporates components from the following open-source projects:
+
+- FastAPI (MIT) — https://github.com/tiangolo/fastapi
+- React (MIT) — https://github.com/facebook/react
+- Vite (MIT) — https://github.com/vitejs/vite
+- Zustand (MIT) — https://github.com/pmndrs/zustand
+- Supabase JS (MIT) — https://github.com/supabase/supabase-js
+- Anthropic Python SDK (MIT) — https://github.com/anthropics/anthropic-sdk-python
+- Mistral Python SDK (Apache 2.0) — https://github.com/mistralai/client-python
+- OpenAI Python SDK (Apache 2.0) — https://github.com/openai/openai-python
+- Pinecone Python SDK (Apache 2.0) — https://github.com/pinecone-io/pinecone-python-client
+- sse-starlette (BSD) — https://github.com/sysid/sse-starlette
+- jsPDF (MIT) — https://github.com/parallax/jsPDF
+- react-markdown (MIT) — https://github.com/remarkjs/react-markdown
+- Lucide React (ISC) — https://github.com/lucide-icons/lucide
+- Pydantic (MIT) — https://github.com/pydantic/pydantic
+- PyPDF (BSD) — https://github.com/py-pdf/pypdf
+- tiktoken (MIT) — https://github.com/openai/tiktoken
