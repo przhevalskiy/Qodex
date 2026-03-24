@@ -6,15 +6,20 @@
   justify-content: center;
 }
 
+.sample-questions-dropdown-toggle.no-margin {
+  margin-right: 0;
+}
+
 .sample-questions-dropdown-toggle {
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 6px;
+  margin-right: 8px;
   background: none;
   border: none;
   border-radius: 6px;
-  color: var(--gray-400);
+  color: var(--brand-600);
   cursor: pointer;
   transition: all var(--transition-fast);
 }
@@ -25,11 +30,6 @@
 }
 
 .sample-questions-chevron {
-  transition: transform 0.2s ease;
-}
-
-.sample-questions-chevron.open {
-  transform: rotate(180deg);
 }
 
 .sample-questions-dropdown-menu {

@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ListFilterPlus } from 'lucide-react';
 import { SampleQuestion } from '@/shared/types/sampleQuestions';
 import { NestedQuestionItem } from './NestedQuestionItem';
 import './SampleQuestionsDropdown.css';
@@ -48,16 +48,16 @@ export function SampleQuestionsDropdown({
     <div className="sample-questions-dropdown-container">
       <button
         ref={buttonRef}
-        className="sample-questions-dropdown-toggle"
+        className={`sample-questions-dropdown-toggle${isCollapsed ? ' no-margin' : ''}`}
         onClick={(e) => {
           e.stopPropagation();
           onToggle();
         }}
         aria-label="Sample questions"
       >
-        <ChevronDown
+        <ListFilterPlus
           size={16}
-          className={`sample-questions-chevron ${isOpen ? 'open' : ''}`}
+          className="sample-questions-chevron"
         />
       </button>
 
