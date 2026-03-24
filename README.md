@@ -1,170 +1,197 @@
-# Qodex - AI-Powered Knowledge Base Chat Platform
+# Qodex — AI-Powered Knowledge Base Chat Platform
 
 Qodex is an enterprise-grade AI chat platform with multi-provider support, retrieval-augmented generation (RAG), and intelligent document processing. Built for educational institutions and knowledge-intensive organizations, Qodex enables users to have meaningful conversations with AI models while seamlessly integrating with their document repositories.
 
-## 🌟 Key Features
+---
 
-### **Multi-Provider AI Chat**
-- Switch between OpenAI (GPT-4.1), Claude (Sonnet 4.5), Mistral (Large), and Cohere (Command)
-- Real-time SSE streaming responses with graceful truncation
-- Provider-specific optimizations and prompt engineering
-- Visual provider selection with mobile-responsive modal interface
+## Key Features
 
-### **Advanced RAG Pipeline**
+### Multi-Provider AI Chat
+- Switch between Claude (Sonnet), Mistral (Large), OpenAI (GPT-4.1), and Cohere (Command)
+- Real-time SSE streaming with graceful truncation and **Continue On** for long responses
+- Provider-specific prompt engineering and citation policies
+- **Auto mode**: intent-based provider routing (e.g. Claude for case studies, Mistral for summaries)
+- Visual provider toggles on desktop; modal selector on mobile
+
+### Advanced RAG Pipeline
 - **Pinecone Vector Database**: Semantic search with cosine similarity (text-embedding-3-small, 1536 dims)
 - **Entity-First Retrieval**: N-gram extraction with instructor name matching to prevent cross-contamination
-- **Research Modes**: Quick (7 sources), Enhanced (12 sources), Deep (16 sources)
-- **Intent Classification**: 8 specialized intents (Summarize, Explain, Compare, Case Study, etc.) with zero-latency regex matching
+- **Research Modes**: Quick (7 sources, score ≥ 0.40), Enhanced (12 sources, ≥ 0.30), Deep (16 sources, ≥ 0.25)
+- **Intent Classification**: 8 specialized intents (Summarize, Explain, Compare, Case Study, Research Brief, etc.) with zero-latency regex matching
 - **Smart Context Injection**: Token-aware chunking (500 tokens/chunk, 50 token overlap) with structure preservation
+- **Query Rewriting**: Mistral-based pronoun resolution for follow-up questions (e.g. "tell me more about it")
 
-### **Document & Attachment Management**
-- **Global Knowledge Base**: Upload PDFs, DOCX, TXT, MD files (10MB limit) for shared semantic search
-- **Conversation Attachments**: Discussion-scoped files for targeted questions without Pinecone indexing
-- **Inline Citations**: `[N]` markers with clickable source previews and chunk highlighting
-- **Document Preview**: Modal with full-text view and navigable chunks
+### Citation System
+- **Inline markers**: `[N]` (grounded fact from source N), `[AI:N,M]` (inference extending sources N and M), `[AI]` (pure general knowledge)
+- Clickable citation chips with relevance score tooltip and document preview
+- Backend post-processing ensures `[N]` and `[AI]` are never placed on the same claim (contradictory)
+- Remark plugin parses markers from streamed markdown for interactive rendering
 
-### **User Authentication & Personalization**
-- **Supabase Auth**: Email/password with JWT verification and email confirmation
-- **User Profiles**: Avatar selection (20+ icons), display name, preferred name
+### Document & Attachment Management
+- **Global Knowledge Base**: Upload PDFs, DOCX, TXT, MD files (shared across all users, indexed to Pinecone)
+- **Conversation Attachments**: Discussion-scoped files (PDFs, DOCX, TXT, MD, images) injected as context without Pinecone indexing
+- **Document Preview**: Modal with full-text view, navigable chunks, and chunk-level highlight of the retrieved section
+- **L2 Format Cache**: Formatted chunk content persisted to Supabase (`document_formatted_chunks`) for instant document opens
+
+### User Authentication & Personalization
+- **Supabase Auth**: Email/password with JWT verification (ES256/RS256/EdDSA via JWKS + HS256 fallback) and email confirmation
+- **User Profiles**: Avatar selection, display name, preferred name — auto-created on signup via trigger
 - **Row-Level Security**: User-scoped discussions and messages with PostgreSQL RLS
-- **Session Persistence**: LocalStorage + Zustand for seamless experience
+- **Session Persistence**: LocalStorage + Zustand for seamless cross-session experience
 
-### **Intelligent Conversation Management**
-- **Discussion System**: Create, rename, delete conversations with auto-generated titles
-- **Message History**: Persistent storage with Supabase, includes tokens/latency metrics
-- **Suggested Questions**: AI-generated follow-up questions (max 4) based on conversation context
-- **URL Routing**: Share and bookmark specific discussions (`/chat/:discussionId`)
+### Intelligent Conversation Management
+- **Discussion System**: Create, rename, delete, and share conversations with auto-generated titles
+- **Public Sharing**: Toggle any discussion public; shareable `/share/:discussionId` links
+- **Message History**: Persistent Supabase storage with per-message tokens, latency, sources, citations, and research mode
+- **Suggested Questions**: AI-generated follow-ups (max 4) based on conversation context
+- **URL Routing**: Deep-link to any discussion via `/chat/:discussionId`
 
-### **Mobile-First Design**
+### Empty State Quick Actions
+- 9 category chips (Case Studies, Course Readings, Simulations, etc.) each expand a submenu of 5 curated prompts
+- Clicking a submenu item auto-submits the prompt
+- Hovering a submenu item or journey question previews it as the input placeholder
+
+### Export & Voice
+- **Export Chat**: Export the current conversation to PDF with formatting, citations, title, and timestamps
+- **Export History**: Export your full discussion list to PDF with title, timestamps, and chat URL per discussion
+- **Voice Input**: Web Speech API integration for speech-to-text transcription
+- **Share**: Shareable discussion links with public RLS access
+
+### Mobile-First Design
 - Fully responsive layout (640px, 768px, 1024px breakpoints)
 - Touch-friendly UI with 44px minimum tap targets
+- Collapsible sidebar with directional cursor cue on the drag handle
 - Hamburger menu with slide-out drawer for mobile navigation
 - Provider selector modal for mobile
 - iOS-optimized input fields (16px font to prevent zoom)
 
-### **Voice & Export**
-- **Voice Input**: Web Speech API integration for speech-to-text transcription
-- **PDF Export**: Export entire conversations with formatting and citations (html2canvas + jspdf)
-- **Share**: Shareable discussion links with URL-based routing
-
 ---
 
-## 🏗️ Architecture Overview
+## Architecture Overview
 
-### **Backend (Python 3.11 + FastAPI)**
+### Backend (Python 3.11 + FastAPI)
 
 **Framework & Runtime**
 - FastAPI with uvicorn ASGI server
 - SSE (Server-Sent Events) streaming via sse-starlette
-- CORS middleware for cross-origin requests
-- Lifespan hooks for startup/shutdown
+- CORS middleware (configurable via `CORS_ORIGINS` env var)
+- Lifespan hooks: bootstraps document registry from Pinecone on startup if local registry is empty
 
 **Database & Persistence**
-- **Supabase PostgreSQL**: User profiles, discussions, messages with RLS
-- **Pinecone**: Vector embeddings for semantic search (1536-dim cosine similarity)
-- **Disk Registry**: `backend/data/document_registry.json` for document metadata persistence
+- **Supabase PostgreSQL**: User profiles, discussions, messages, formatted chunk cache — all with RLS
+- **Pinecone**: Vector embeddings for semantic search (1536-dim cosine)
+- **Disk Registry**: `backend/data/document_registry.json` for document metadata persistence across restarts
 
 **Authentication**
-- Supabase Auth with JWT (ES256/RS256/EdDSA via JWKS, legacy HS256 fallback)
-- `get_current_user_id()` dependency injection for protected endpoints
-- Email confirmation flow with URL hash processing
+- Supabase Auth with JWT verification (ES256/RS256/EdDSA via JWKS endpoint; HS256 fallback for legacy tokens)
+- `get_current_user_id()` FastAPI dependency injection on all protected endpoints
+- Email confirmation handling via URL hash in frontend
 
-**AI Providers** (4 configured on startup)
-- OpenAI (gpt-4.1) - AsyncOpenAI client
-- Claude (claude-sonnet-4-5-20250929) - AsyncAnthropic client
-- Mistral (mistral-large-latest) - Streaming support
-- Cohere (command-a-03-2025) - Streaming support
+**AI Providers** (registered via `ProviderRegistry` singleton)
+- **Claude** (`claude-sonnet-4-5-20250929`) — Anthropic SDK, async streaming
+- **Mistral** (`mistral-large-latest`) — streaming completions + fast query rewriting
+- **OpenAI** (`gpt-4.1`) — AsyncOpenAI; also used exclusively for text-embedding-3-small embeddings
+- **Cohere** (`command-a-03-2025`) — optional, configure with `COHERE_API_KEY`
 
-**Services Architecture**
-- **DiscussionService**: Supabase-backed CRUD for discussions/messages (singleton)
-- **DocumentService**: Document processing, Pinecone indexing, instructor extraction (singleton)
-- **AttachmentService**: In-memory conversation-scoped file storage (singleton per discussion)
-- **PineconeService**: Vector DB client with lazy initialization (singleton)
-- **IntentClassifier**: Regex-based intent detection (8 types + generalist fallback)
+**Services** (singleton pattern via `get_*_service()`)
+- **DiscussionService**: Supabase-backed CRUD for discussions and messages
+- **DocumentService**: Document extraction, token-aware chunking, Pinecone batch embedding, instructor index
+- **AttachmentService**: In-memory conversation-scoped file storage; reuses DocumentService text extraction
+- **PineconeService**: Vector DB client with lazy initialization and batch upsert
+- **IntentClassifier**: Regex-based intent detection, 8 intents + generalist fallback, zero-latency
 
-**RAG Pipeline** (3-stage retrieval)
+**RAG Pipeline** (4-stage)
 1. **Query Embedding**: User query → text-embedding-3-small → 1536-dim vector
-2. **Pinecone Search**: Query vector → retrieve top-k chunks (research mode controls k)
-3. **Entity Boost**: N-gram extraction → instructor name matching → relevance boost
-4. **Context Assembly**: Format with citations → inject into system prompt
+2. **Pinecone Search**: Query vector → top-k chunks (k controlled by research mode)
+3. **Entity Boost**: Extract person names via n-gram → match instructor index → tiered score boost (+0.30 / +0.15 / +0.05)
+4. **Context Assembly**: Number sources → format as `[Source N - filename]\n...` → inject into system prompt; attachments prepended as `[Attached File: filename]\n...`
 
 **Text Processing**
 - **Extraction**: PyPDF (PDFs), python-docx (DOCX), direct read (TXT/MD)
-- **Chunking**: Token-aware (cl100k_base tokenizer), 500 tokens/chunk, 50 token overlap
-- **Algorithm**: Paragraph detection → type classification → accumulation with budget → sentence fallback
-- **Embedding**: Batch embedding for efficiency (text-embedding-3-small)
+- **Chunking**: Token-aware (cl100k_base), 500 tokens/chunk, 50 token overlap
+- **Algorithm**: Paragraph detection → type classification → accumulate to budget → sentence-level fallback
+- **Embedding**: Batch upsert to Pinecone with document_id + chunk_index metadata
+
+**Streaming Pipeline**
+- SSE events emitted in order: `sources` → `intent` → `chunk` (repeated) → `suggested_questions` → `discussion_title` → `done`
+- Continuation detection: if prior assistant message is marked `is_truncated`, rewrites query to "continue from exact cut-off"
+- Stale citation sanitization: strips `[N]` markers from prior messages before sending to model (prevents hallucinated re-citations)
+- Post-processing: removes contradictory `[N][AI]` co-occurrences from Mistral output via `re.sub`
 
 **API Routes**
-- `/api/chat/stream` - SSE streaming endpoint (POST)
-- `/api/chat/providers` - List available providers (GET)
-- `/api/discussions` - CRUD for discussions (GET, POST, PUT, DELETE)
-- `/api/discussions/{id}/messages` - Add message (POST)
-- `/api/documents` - Upload, list, delete documents (GET, POST, DELETE)
-- `/api/discussions/{id}/attachments` - CRUD for attachments (GET, POST, DELETE)
-- `/api/research/modes` - List research modes (GET)
-
-**SSE Event Types**
-- `chunk` - Response text chunk
-- `sources` - Retrieved document sources with citations
-- `intent` - Detected intent classification
-- `suggested_questions` - AI-generated follow-ups (max 4)
-- `discussion_title` - Auto-generated title
-- `done` - Stream complete
-- `error` - Stream error
+- `POST /api/chat/stream` — SSE streaming chat
+- `GET /api/chat/providers` — List configured providers
+- `GET /api/discussions` — List user's discussions
+- `POST /api/discussions` — Create discussion
+- `GET /api/discussions/{id}` — Get discussion with messages
+- `PUT /api/discussions/{id}` — Update title / active / public status
+- `DELETE /api/discussions/{id}` — Delete discussion
+- `DELETE /api/discussions` — Delete all user's discussions
+- `POST /api/documents/upload` — Upload and embed document
+- `GET /api/documents` — List all documents
+- `GET /api/documents/{id}` — Get document metadata
+- `DELETE /api/documents/{id}` — Delete document + Pinecone vectors
+- `POST /api/discussions/{id}/attachments` — Upload attachment
+- `GET /api/discussions/{id}/attachments` — List attachments
+- `GET /api/discussions/{id}/attachments/{att_id}` — Get attachment detail
+- `DELETE /api/discussions/{id}/attachments/{att_id}` — Delete attachment
+- `GET /api/research/modes` — List research modes
+- `GET /health` — Health check with provider status
 
 ---
 
-### **Frontend (React 19 + TypeScript + Vite 7)**
+### Frontend (React 19 + TypeScript + Vite 7)
 
 **Framework & Build**
-- React 19 with TypeScript
-- Vite 7 build tool (HMR, fast bundling)
+- React 19 + TypeScript 5.x
+- Vite 7 (HMR, fast bundling)
 - React Router 7 for client-side routing
-- CSS Modules + Tailwind CSS for styling
+- CSS Modules + Tailwind CSS
+
+**Routes**
+- `/` — Redirects to `/chat`
+- `/chat` — New chat (no active discussion)
+- `/chat/:discussionId` — Specific discussion
+- `/share/:discussionId` — Public shared discussion (auth-gated redirect flow)
 
 **State Management (Zustand)**
-- **useAuthStore**: User authentication, session management, Supabase integration
-- **useDiscussionStore**: Discussion CRUD, active discussion tracking
-- **useChatStore**: Message history, streaming state, stream content buffering
-- **useProviderStore**: AI provider selection, configuration status (persisted)
-- **useDocumentStore**: Document upload, list, selection
-- **useAttachmentStore**: Attachment upload, preview, discussion-scoped management
-- **useResearchModeStore**: Research mode selection (Quick/Enhanced/Deep, persisted)
+- **useAuthStore** — User auth, session, Supabase integration
+- **useDiscussionStore** — Discussion CRUD, active discussion; URL param is source of truth for active ID
+- **useChatStore** — Messages, streaming state, chunk buffer, hover placeholder, truncation flag
+- **useProviderStore** — Provider selection (persisted to localStorage)
+- **useDocumentStore** — Document upload, list, selection
+- **useAttachmentStore** — Discussion-scoped attachment upload and preview
+- **useResearchModeStore** — Research mode selection (persisted to localStorage)
+- **previewStore** — Document preview open/close, highlighted chunk ID, formatted content cache
 
 **Services**
-- **ApiService**: Singleton fetch wrapper with auth header injection
-- **SSEClient**: Streaming SSE parser with abort signal support
-- **Supabase Client**: @supabase/supabase-js singleton
-- **Voice Service**: Web Speech API wrapper
-- **PDF Export**: jspdf + html2canvas integration
+- **ApiService** (`api.ts`) — Singleton fetch wrapper with Supabase Bearer token injection
+- **SSEClient** (`sse.ts`) — Async generator SSE parser; yields typed events; supports AbortSignal
+- **Supabase Client** (`supabase.ts`) — `@supabase/supabase-js` singleton
+- **Voice Service** (`voice.ts`) — Web Speech API wrapper
+- **PDF Export** (`pdfExport.ts`) — `exportDocumentToPDF()` for chat; `exportHistoryToPDF()` for history list
 
 **Custom Hooks**
-- **useSSE**: Stream chat, handle SSE events, chunk buffering
-- **useChunkBuffer**: Debounce streaming updates for optimal rendering
-- **useVoice**: Speech-to-text with Web Speech API
+- **useSSE** — Orchestrates send flow: create discussion → add user message → start SSE → handle events → finalize
+- **useChunkBuffer** — Debounces streaming text updates for optimal React rendering
+- **useVoice** — Speech-to-text with start/stop/transcript
 
 **Key Components**
-- **ChatArea**: Main chat container with message flow and empty state
-- **ChatMessage**: Rendered message with role, timestamp, provider, metrics
-- **ChatInput**: Message input with voice, attachments, provider selector
-- **SourcesDisplay**: Tabbed view (Grid/Chat) with inline citations
-- **DocumentPreviewPane**: Side panel for document content preview
-- **AttachmentPanel**: List and preview conversation attachments
-- **AuthModal**: Sign up/sign in with avatar selection and preferred name
-- **Sidebar**: Discussion list, new chat button, hamburger menu (mobile)
-- **ProviderToggles**: Desktop toggles, mobile modal selector
-
-**Routing**
-- `/` - Root (redirects to /chat)
-- `/chat` - New chat (no discussion)
-- `/chat/:discussionId` - Specific discussion chat
-
-**Types**
-- MessageRole, DocumentSource, Message, Discussion, Provider, ResearchMode, Document, Attachment, ChatRequest, SSEEvent
+- **ChatArea** — Main chat container; empty state with quick-action chips + submenus; auto-scroll (throttled)
+- **ChatMessage** — Message with role, timestamp, provider badge, token/latency metrics, Continue On chip
+- **ChatInput** — Textarea with voice, attachments, provider selector, research mode; hover placeholder from store
+- **SourcesDisplay** — Tabbed source view (Grid / Chat / References) with clickable `[N]` citation chips
+- **InlineCitation** — Hover tooltip with filename, relevance %, "Explore ↗" CTA; click opens document preview
+- **DocumentPreviewPane** — Full-text document panel with chunk navigation and highlighted retrieved section
+- **AttachmentPanel** — List and preview conversation-scoped attachments
+- **AuthModal** — Sign up / sign in with avatar picker, display name, preferred name, email confirmation flow
+- **Sidebar** — Discussion list, new chat, 3-dot menu (export history, delete all), collapsible with drag-handle cursor cue
+- **ProviderToggles** — Desktop toggle buttons; mobile modal selector
+- **ResearchModeSelector** — Quick / Enhanced / Deep mode picker with descriptions
 
 ---
 
-## 📦 Tech Stack
+## Tech Stack
 
 | Layer | Technology | Version |
 |-------|------------|---------|
@@ -175,16 +202,17 @@ Qodex is an enterprise-grade AI chat platform with multi-provider support, retri
 | | Zustand | 5.x |
 | | Tailwind CSS | 3.x |
 | | Lucide React | 0.562.0 |
+| | jsPDF + html2canvas | 4.x / 1.x |
 | **Backend** | Python | 3.11+ |
 | | FastAPI | Latest |
 | | uvicorn | Latest |
 | | sse-starlette | Latest |
 | **Database** | Supabase (PostgreSQL) | Latest |
 | | Pinecone | Latest |
-| **AI Providers** | OpenAI SDK | Latest |
-| | Anthropic SDK | Latest |
+| **AI Providers** | Anthropic SDK | Latest |
 | | Mistral SDK | Latest |
-| | Cohere SDK | Latest |
+| | OpenAI SDK | Latest (embeddings) |
+| | Cohere SDK | Latest (optional) |
 | **Document Processing** | PyPDF | Latest |
 | | python-docx | Latest |
 | | tiktoken | Latest |
@@ -193,22 +221,19 @@ Qodex is an enterprise-grade AI chat platform with multi-provider support, retri
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
-### **Prerequisites**
+### Prerequisites
 
 - **Python 3.11+**
 - **Node.js 18+**
-- **npm or yarn**
-- **Supabase account** (for auth + database)
-- **Pinecone account** (for vector search)
-- **API keys** for AI providers (OpenAI, Anthropic, Mistral, Cohere)
+- **Supabase account** (auth + database)
+- **Pinecone account** (vector search)
+- **API keys** for AI providers (Anthropic and Mistral required; OpenAI required for embeddings; Cohere optional)
 
 ---
 
-### **Quick Start (Automated)**
-
-The easiest way to start Qodex is using the provided scripts:
+### Quick Start (Automated)
 
 ```bash
 # Start both backend and frontend
@@ -219,36 +244,96 @@ The easiest way to start Qodex is using the provided scripts:
 ```
 
 **What `start.sh` does:**
-- Creates Python virtual environment (if not exists)
-- Installs backend dependencies
-- Starts backend (http://localhost:8000)
-- Installs frontend dependencies
-- Starts frontend (http://localhost:5173)
+- Creates Python virtual environment (if not exists) and installs backend dependencies
+- Starts backend at `http://localhost:8000`
+- Installs frontend npm deps and starts Vite dev server at `http://localhost:5173`
 - Logs to `logs/backend.log` and `logs/frontend.log`
-- Stores PIDs in `.pids/` directory
+- Stores PIDs in `.pids/` for clean shutdown
 
 ---
 
-### **Manual Setup**
+### Manual Setup
 
-#### **1. Backend Setup**
+#### 1. Backend Setup
 
 ```bash
-# Navigate to backend directory
 cd backend
-
-# Create virtual environment
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
+source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-
-# Create .env file
 cp .env.example .env
 ```
 
-**Configure `.env`** (see [Environment Variables](#environment-variables) section):
+Edit `backend/.env` — see [Environment Variables](#environment-variables) below.
+
+**Initialize Supabase database:**
+
+```bash
+# Paste contents of backend/supabase_schema.sql into Supabase SQL Editor and execute.
+# Creates: profiles, discussions, messages, document_formatted_chunks tables + RLS policies + trigger
+```
+
+**Start backend:**
+
+```bash
+uvicorn app.main:app --reload
+# API: http://localhost:8000
+# Docs: http://localhost:8000/docs
+```
+
+---
+
+#### 2. Frontend Setup
+
+```bash
+cd frontend
+npm install
+cp .env.example .env
+```
+
+Edit `frontend/.env`:
+
+```env
+VITE_API_URL=http://localhost:8000
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+```
+
+```bash
+npm run dev
+# App: http://localhost:5173
+```
+
+---
+
+#### 3. Supabase Setup
+
+1. Create project at https://supabase.com/dashboard
+2. Get credentials: **Project Settings → API**
+   - Project URL → `SUPABASE_URL`
+   - `anon public` key → `SUPABASE_KEY` (frontend) + `VITE_SUPABASE_ANON_KEY`
+   - `service_role` key → `SUPABASE_SERVICE_ROLE_KEY`
+   - **Settings → API → JWT Settings → JWT Secret** → `SUPABASE_JWT_SECRET` (required)
+3. Run `backend/supabase_schema.sql` in SQL Editor
+4. Enable Email Auth: **Authentication → Providers → Email**
+
+---
+
+#### 4. Pinecone Setup
+
+1. Create account at https://www.pinecone.io/
+2. Create index:
+   - Name: `qodex-documents` (or custom via `PINECONE_INDEX_NAME`)
+   - Dimensions: **1536**
+   - Metric: **Cosine**
+   - Spec: Serverless (AWS us-east-1 recommended)
+3. Copy API key → `PINECONE_API_KEY`
+
+---
+
+## Environment Variables
+
+### Backend (`backend/.env`)
 
 ```env
 # Supabase
@@ -258,147 +343,30 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 SUPABASE_JWT_SECRET=your-jwt-secret
 
 # AI Providers
-OPENAI_API_KEY=sk-...
 ANTHROPIC_API_KEY=sk-ant-...
 MISTRAL_API_KEY=...
-COHERE_API_KEY=...
+OPENAI_API_KEY=sk-...          # Required for embeddings (text-embedding-3-small)
+COHERE_API_KEY=...             # Optional
+
+# AI Model Overrides (optional — defaults shown)
+ANTHROPIC_MODEL=claude-sonnet-4-5-20250929
+MISTRAL_MODEL=mistral-large-latest
+OPENAI_MODEL=gpt-4.1
+COHERE_MODEL=command-a-03-2025
 
 # Pinecone
 PINECONE_API_KEY=...
 PINECONE_INDEX_NAME=qodex-documents
+PINECONE_ENVIRONMENT=us-east-1
+PINECONE_HOST=...              # Optional — uses index name if omitted
 
 # Application
 CORS_ORIGINS=http://localhost:5173
 DEBUG=true
-```
-
-**Initialize Supabase database:**
-
-```bash
-# Run the SQL schema in Supabase SQL Editor
-# File: supabase_schema.sql
-# Creates: profiles, discussions, messages tables + RLS policies + trigger
-```
-
-**Start backend:**
-
-```bash
-uvicorn app.main:app --reload
-# API available at http://localhost:8000
-# Docs at http://localhost:8000/docs
-```
-
----
-
-#### **2. Frontend Setup**
-
-```bash
-# Navigate to frontend directory
-cd frontend
-
-# Install dependencies
-npm install
-
-# Create .env file
-cp .env.example .env
-```
-
-**Configure `.env`:**
-
-```env
-VITE_API_URL=http://localhost:8000
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key
-```
-
-**Start frontend:**
-
-```bash
-npm run dev
-# App available at http://localhost:5173
-```
-
----
-
-### **3. Supabase Setup**
-
-1. **Create Supabase Project**: https://supabase.com/dashboard
-2. **Get Credentials**:
-   - URL: Project Settings → API → Project URL
-   - Anon Key: Project Settings → API → Project API keys → anon public
-   - Service Role Key: Project Settings → API → Project API keys → service_role (secret)
-   - JWT Secret: Project Settings → API → JWT Settings → JWT Secret
-
-3. **Run SQL Schema**:
-   - Go to SQL Editor in Supabase Dashboard
-   - Paste contents of `supabase_schema.sql`
-   - Execute to create tables, RLS policies, and trigger
-
-4. **Enable Email Auth**:
-   - Authentication → Providers → Email
-   - Configure email templates (optional)
-
----
-
-### **4. Pinecone Setup**
-
-1. **Create Pinecone Account**: https://www.pinecone.io/
-2. **Create Index**:
-   - Name: `qodex-documents` (or custom name in .env)
-   - Dimensions: **1536**
-   - Metric: **Cosine**
-   - Spec: Serverless (AWS us-east-1 recommended)
-3. **Get API Key**: API Keys → Create API Key
-4. **Add to `.env`**: `PINECONE_API_KEY=...`
-
----
-
-## 🔧 Environment Variables
-
-### **Backend (.env)**
-
-```env
-# ==========================================
-# Supabase Database & Authentication
-# ==========================================
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_KEY=your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-SUPABASE_JWT_SECRET=your-jwt-secret  # Required for JWT verification
-
-# ==========================================
-# AI Provider API Keys
-# ==========================================
-OPENAI_API_KEY=sk-...
-ANTHROPIC_API_KEY=sk-ant-...
-MISTRAL_API_KEY=...
-COHERE_API_KEY=...
-
-# ==========================================
-# AI Model Configurations (Optional)
-# ==========================================
-OPENAI_MODEL=gpt-4.1
-ANTHROPIC_MODEL=claude-sonnet-4-5-20250929
-MISTRAL_MODEL=mistral-large-latest
-COHERE_MODEL=command-a-03-2025
-
-# ==========================================
-# Pinecone Vector Database
-# ==========================================
-PINECONE_API_KEY=...
-PINECONE_HOST=...  # Optional, uses index name if not provided
-PINECONE_ENVIRONMENT=us-east-1
-PINECONE_INDEX_NAME=qodex-documents
-
-# ==========================================
-# Application Configuration
-# ==========================================
-CORS_ORIGINS=http://localhost:5173,http://localhost:3000
-DEBUG=true
 LOG_LEVEL=INFO
 ```
 
-### **Frontend (.env)**
+### Frontend (`frontend/.env`)
 
 ```env
 VITE_API_URL=http://localhost:8000
@@ -408,391 +376,227 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 Qodex/
 ├── backend/
 │   ├── app/
-│   │   ├── api/
-│   │   │   ├── routes/
-│   │   │   │   ├── __init__.py
-│   │   │   │   ├── chat.py              # SSE streaming endpoint
-│   │   │   │   ├── discussions.py       # Discussion CRUD
-│   │   │   │   ├── documents.py         # Document upload/search
-│   │   │   │   └── attachments.py       # Attachment management
-│   │   │   └── middleware/
+│   │   ├── api/routes/
+│   │   │   ├── chat.py              # SSE streaming endpoint
+│   │   │   ├── discussions.py       # Discussion CRUD
+│   │   │   ├── documents.py         # Document upload/preview
+│   │   │   └── attachments.py       # Attachment management
 │   │   ├── auth/
-│   │   │   ├── __init__.py
-│   │   │   └── dependencies.py          # JWT verification
+│   │   │   └── dependencies.py      # JWT verification (Supabase JWKS)
 │   │   ├── core/
-│   │   │   ├── config.py                # Settings & env vars
-│   │   │   └── research_modes.py        # Research mode definitions
+│   │   │   ├── config.py            # Pydantic settings + env vars
+│   │   │   └── research_modes.py    # Research mode definitions
 │   │   ├── database/
-│   │   │   └── supabase_client.py       # Supabase client
+│   │   │   └── supabase_client.py
 │   │   ├── models/
-│   │   │   ├── __init__.py
-│   │   │   ├── discussion.py            # Pydantic models
-│   │   │   ├── message.py
+│   │   │   ├── discussion.py
+│   │   │   ├── message.py           # DocumentSource, MessageRole
 │   │   │   ├── document.py
 │   │   │   └── attachment.py
 │   │   ├── providers/
-│   │   │   ├── __init__.py              # ProviderRegistry
-│   │   │   ├── base.py                  # BaseProvider abstract
-│   │   │   ├── openai_provider.py
+│   │   │   ├── __init__.py          # ProviderRegistry
+│   │   │   ├── base.py              # BaseProvider abstract
 │   │   │   ├── claude_provider.py
 │   │   │   ├── mistral_provider.py
+│   │   │   ├── openai_provider.py
 │   │   │   └── cohere_provider.py
 │   │   ├── services/
-│   │   │   ├── __init__.py
-│   │   │   ├── discussion_service.py    # Discussion CRUD
-│   │   │   ├── document_service.py      # Document processing
-│   │   │   ├── attachment_service.py    # Attachment storage
-│   │   │   ├── pinecone_service.py      # Vector DB client
-│   │   │   └── intent_classifier.py     # Intent detection
-│   │   ├── utils/
-│   │   │   └── streaming.py             # SSE helpers
-│   │   └── main.py                      # FastAPI app
+│   │   │   ├── discussion_service.py
+│   │   │   ├── document_service.py  # Extraction, chunking, Pinecone indexing
+│   │   │   ├── attachment_service.py
+│   │   │   ├── pinecone_service.py
+│   │   │   └── intent_classifier.py
+│   │   └── main.py                  # FastAPI app + lifespan
 │   ├── data/
-│   │   └── document_registry.json       # Persisted metadata
+│   │   └── document_registry.json   # Persisted document metadata
 │   ├── requirements.txt
 │   ├── .env
 │   ├── .env.example
-│   └── supabase_schema.sql
+│   └── supabase_schema.sql          # Run once in Supabase SQL Editor
 ├── frontend/
 │   ├── src/
 │   │   ├── app/
-│   │   │   ├── App.tsx                  # Main app + routing
-│   │   │   └── App.css
-│   │   ├── components/
-│   │   │   ├── layout/
-│   │   │   │   ├── Sidebar.tsx          # Nav + discussion list
-│   │   │   │   ├── Header.tsx
-│   │   │   │   └── Footer.tsx
-│   │   │   └── ui/                      # Shared components
-│   │   │       └── Modal.tsx
+│   │   │   └── App.tsx              # Main routing + auth gate
+│   │   ├── components/layout/
+│   │   │   ├── Sidebar.tsx          # Discussion list, export, collapsible
+│   │   │   └── NestedQuestionItem.tsx
 │   │   ├── features/
-│   │   │   ├── auth/
-│   │   │   │   ├── components/
-│   │   │   │   │   └── AuthModal.tsx    # Sign up/sign in
-│   │   │   │   ├── store.ts             # Zustand store
-│   │   │   │   └── index.ts
-│   │   │   ├── chat/
-│   │   │   │   ├── components/
-│   │   │   │   │   ├── chat/            # Chat UI
-│   │   │   │   │   ├── input/           # Input controls
-│   │   │   │   │   ├── sources/         # Source display
-│   │   │   │   │   ├── attachments/     # Attachment panel
-│   │   │   │   │   ├── modals/          # Modals
-│   │   │   │   │   └── ui/              # UI components
-│   │   │   │   ├── store.ts
-│   │   │   │   └── index.ts
-│   │   │   ├── discussions/
-│   │   │   │   ├── components/
-│   │   │   │   ├── store.ts
-│   │   │   │   └── index.ts
-│   │   │   ├── documents/
-│   │   │   │   ├── components/
-│   │   │   │   ├── store.ts
-│   │   │   │   └── index.ts
-│   │   │   ├── attachments/
-│   │   │   │   ├── store.ts
-│   │   │   │   └── index.ts
-│   │   │   ├── providers/
-│   │   │   │   ├── components/
-│   │   │   │   │   └── ProviderToggles.tsx
-│   │   │   │   ├── store.ts
-│   │   │   │   └── index.ts
-│   │   │   └── research/
-│   │   │       ├── components/
-│   │   │       │   └── ResearchModeSelector.tsx
-│   │   │       ├── store.ts
-│   │   │       └── index.ts
-│   │   ├── shared/
-│   │   │   ├── services/
-│   │   │   │   ├── api.ts               # API client
-│   │   │   │   ├── sse.ts               # SSE client
-│   │   │   │   ├── supabase.ts          # Supabase client
-│   │   │   │   ├── voice.ts             # Web Speech API
-│   │   │   │   └── pdfExport.ts         # PDF export
-│   │   │   ├── hooks/
-│   │   │   │   ├── useSSE.ts            # SSE hook
-│   │   │   │   ├── useChunkBuffer.ts    # Chunk buffering
-│   │   │   │   └── useVoice.ts          # Voice input
-│   │   │   ├── types/
-│   │   │   │   └── index.ts             # TypeScript types
-│   │   │   ├── constants/
-│   │   │   ├── utils/
-│   │   │   └── index.ts
-│   │   ├── assets/
-│   │   ├── index.css                    # Global styles
-│   │   └── main.tsx                     # React entry
+│   │   │   ├── auth/                # AuthModal, useAuthStore
+│   │   │   ├── chat/                # ChatArea, ChatMessage, ChatInput, SourcesDisplay, InlineCitation
+│   │   │   ├── discussions/         # useDiscussionStore
+│   │   │   ├── documents/           # useDocumentStore, previewStore, DocumentPreviewPane
+│   │   │   ├── attachments/         # useAttachmentStore, AttachmentPanel
+│   │   │   ├── providers/           # ProviderToggles, useProviderStore
+│   │   │   └── research/            # ResearchModeSelector, useResearchModeStore
+│   │   └── shared/
+│   │       ├── services/
+│   │       │   ├── api.ts           # ApiService singleton
+│   │       │   ├── sse.ts           # SSE async generator client
+│   │       │   ├── supabase.ts      # Supabase JS singleton
+│   │       │   ├── voice.ts         # Web Speech API
+│   │       │   └── pdfExport.ts     # exportDocumentToPDF + exportHistoryToPDF
+│   │       ├── hooks/
+│   │       │   ├── useSSE.ts        # Message send orchestration
+│   │       │   ├── useChunkBuffer.ts
+│   │       │   └── useVoice.ts
+│   │       └── types/index.ts       # All TypeScript types
 │   ├── package.json
-│   ├── .env.example
-│   ├── tsconfig.json
 │   ├── vite.config.ts
-│   └── dist/                            # Build output
-├── start.sh                             # Start script
-├── stop.sh                              # Stop script
-├── render.yaml                          # Deployment blueprint
-├── supabase_schema.sql                  # Database schema
-└── README.md
+│   └── .env.example
+├── start.sh
+├── stop.sh
+└── render.yaml                      # Render.com deployment blueprint
 ```
 
 ---
 
-## 🔌 API Endpoints
+## Database Schema (Supabase)
 
-### **Chat**
-- `POST /api/chat/stream` - Stream chat response (SSE)
-- `GET /api/chat/providers` - List available providers
+Run `backend/supabase_schema.sql` in your Supabase SQL Editor.
 
-### **Discussions**
-- `GET /api/discussions` - List user's discussions
-- `POST /api/discussions` - Create new discussion
-- `GET /api/discussions/{id}` - Get discussion with messages
-- `PUT /api/discussions/{id}` - Update discussion (title, active status)
-- `DELETE /api/discussions/{id}` - Delete discussion
-- `DELETE /api/discussions` - Delete all user's discussions
+**Tables:**
 
-### **Documents**
-- `POST /api/documents/upload` - Upload and embed document
-- `GET /api/documents` - List all documents (shared)
-- `GET /api/documents/{id}` - Get document metadata
-- `DELETE /api/documents/{id}` - Delete document
-- `POST /api/documents/search` - Search documents (vector search)
+1. **profiles** — Auto-created on signup via trigger
+   - `id` (UUID, FK auth.users), `email`, `display_name`, `created_at`
 
-### **Attachments**
-- `POST /api/discussions/{discussion_id}/attachments` - Upload attachment
-- `GET /api/discussions/{discussion_id}/attachments` - List attachments
-- `GET /api/discussions/{discussion_id}/attachments/{attachment_id}` - Get attachment detail
-- `DELETE /api/discussions/{discussion_id}/attachments/{attachment_id}` - Delete attachment
+2. **discussions**
+   - `id`, `user_id` (FK profiles), `title`, `is_active`, `is_public`, `created_at`, `updated_at`
+   - `is_public`: enables shareable links via `/share/:id`
 
-### **Research Modes**
-- `GET /api/research/modes` - List research modes
+3. **messages**
+   - `id`, `discussion_id`, `role` (user/assistant/system), `content`, `provider`
+   - `tokens_used`, `response_time_ms`
+   - `sources`, `citations`, `suggested_questions` (JSONB)
+   - `intent`, `research_mode`, `is_truncated`
+   - `created_at`
 
-### **Health**
-- `GET /health` - Health check with provider status
+4. **document_formatted_chunks** — L2 format cache
+   - `id`, `document_id`, `chunk_id`, `formatted_content`, `created_at`
+   - Unique on `(document_id, chunk_id)` — persists AI-formatted chunk previews for instant document opens
+
+**RLS Policies:**
+- Users access only their own discussions and messages
+- Authenticated users can read any `is_public = true` discussion and its messages
+
+**Trigger:**
+- `on_auth_user_created` — auto-creates profile row on Supabase auth signup
 
 ---
 
-## 🚢 Deployment
+## Deployment
 
-### **Render Deployment (Recommended)**
+### Render (Recommended)
 
-Qodex includes a `render.yaml` blueprint for one-click deployment:
+Qodex ships with a `render.yaml` blueprint for one-click deployment:
 
-1. **Push to GitHub**:
-   ```bash
-   git init
-   git add .
-   git commit -m "Initial commit"
-   git remote add origin <your-repo-url>
-   git push -u origin main
-   ```
+1. Push to GitHub
+2. Connect repo to Render → Create Blueprint from `render.yaml`
+3. Set environment variables in Render Dashboard (backend and frontend services)
+4. Deploy — Render auto-deploys on every `git push`
 
-2. **Connect to Render**:
-   - Go to https://render.com/
-   - Create account and connect GitHub
-   - Create Blueprint from `render.yaml`
+**Services:**
+- **Backend**: Python web service — `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+- **Frontend**: Static site — `npm run build`, serves `dist/`, SPA fallback `/* → /index.html`
 
-3. **Set Environment Variables** in Render Dashboard:
-   - Backend service: Add all backend `.env` variables
-   - Frontend service: Add frontend `.env` variables (as `VITE_*`)
+### Manual (Production)
 
-4. **Deploy**: Render auto-deploys on git push
-
-**Services created:**
-- **Backend**: Python/FastAPI web service (port $PORT)
-  - Health check: `/health`
-  - Start: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-- **Frontend**: Static site
-  - Build: `npm install && npm run build`
-  - Publish: `dist/`
-  - SPA routing: `/*` → `/index.html`
-
-### **Manual Deployment (Production)**
-
-**Backend:**
 ```bash
-cd backend
-pip install -r requirements.txt
+# Backend
+cd backend && pip install -r requirements.txt
 uvicorn app.main:app --host 0.0.0.0 --port 8000
-```
 
-**Frontend:**
-```bash
-cd frontend
-npm install
-npm run build
-# Serve dist/ folder with nginx/apache/caddy
+# Frontend
+cd frontend && npm install && npm run build
+# Serve dist/ with nginx/caddy/apache
 ```
 
 ---
 
-## 🧪 Development
+## Development
 
-### **Adding New AI Providers**
+### Adding a New AI Provider
 
-1. **Create Provider Class** (`backend/app/providers/new_provider.py`):
+1. Create `backend/app/providers/new_provider.py` extending `BaseProvider`:
    ```python
    from .base import BaseProvider
    from typing import AsyncGenerator
 
    class NewProvider(BaseProvider):
-       async def stream_completion(
-           self,
-           messages: list,
-           context: str = "",
-           temperature: float = 0.7,
-           max_tokens: int = 2000,
-           intent_prompt: str = "",
-           research_prompt: str = ""
-       ) -> AsyncGenerator[str, None]:
-           # Implement streaming logic
+       async def stream_completion(self, messages, context="", temperature=0.7,
+                                   max_tokens=2000, intent_prompt="", research_prompt=""
+                                   ) -> AsyncGenerator[str, None]:
            yield chunk
    ```
 
-2. **Register Provider** (`backend/app/providers/__init__.py`):
+2. Register in `backend/app/providers/__init__.py`:
    ```python
    from .new_provider import NewProvider
-
-   def register_providers():
-       registry.register("new_provider", NewProvider, "New Provider", "model-name")
+   registry.register("new_provider", NewProvider, "Display Name", "model-name")
    ```
 
-3. **Update Frontend** (`frontend/src/features/providers/store.ts`):
-   ```typescript
-   // Add to ProviderName type
-   export type ProviderName = 'mistral' | 'openai' | 'claude' | 'cohere' | 'new_provider';
-   ```
+3. Add API key to `backend/app/core/config.py` and `.env`
 
-4. **Add CSS** (`frontend/src/features/providers/components/ProviderToggles.css`):
-   ```css
-   .provider-toggle.new_provider {
-     color: var(--new-provider-color);
-   }
-   ```
+### File Conventions
 
-### **File Conventions**
-
-- **Backend Models**: `backend/app/models/` - Pydantic BaseModel with `__init__.py` re-exports
-- **Backend Services**: `backend/app/services/` - Singleton pattern with `get_*_service()` getter
-- **Frontend Features**: `frontend/src/features/<feature>/` - Export via `index.ts`
-- **Frontend Types**: `frontend/src/shared/types/index.ts` - Centralized TypeScript types
-- **Frontend Stores**: Zustand with `interface State` + `interface Actions` pattern
-- **Frontend Services**: `frontend/src/shared/services/` - API/external integrations
+| Location | Convention |
+|----------|-----------|
+| `backend/app/models/` | Pydantic `BaseModel` with `__init__.py` re-exports |
+| `backend/app/services/` | Singleton pattern via `get_*_service()` getter |
+| `frontend/src/features/<name>/` | Feature folder; export public API via `index.ts` |
+| `frontend/src/shared/types/index.ts` | All TypeScript types centralized here |
+| Zustand stores | `interface State` + `interface Actions` pattern |
+| `frontend/src/shared/services/` | API and external service integrations |
 
 ---
 
-## 📊 Database Schema (Supabase)
+## Troubleshooting
 
-**Tables:**
-1. **profiles** - Auto-created on signup
-   - `id` (UUID, FK to auth.users)
-   - `email` (text)
-   - `display_name` (text)
-   - `created_at` (timestamptz)
-
-2. **discussions** - User conversations
-   - `id` (UUID, PK)
-   - `user_id` (UUID, FK to profiles)
-   - `title` (text)
-   - `is_active` (boolean)
-   - `created_at`, `updated_at` (timestamptz)
-
-3. **messages** - Discussion messages
-   - `id` (UUID, PK)
-   - `discussion_id` (UUID, FK to discussions)
-   - `role` (text: user/assistant/system)
-   - `content` (text)
-   - `provider` (text)
-   - `tokens_used`, `response_time_ms` (integer)
-   - `sources`, `citations`, `suggested_questions` (JSONB)
-   - `intent` (text)
-   - `created_at` (timestamptz)
-
-**RLS Policies:**
-- Users can only access their own discussions and messages
-- Profile updates restricted to own profile
-
-**Trigger:**
-- `handle_new_user()` - Auto-creates profile on auth signup
-
----
-
-## 🐛 Troubleshooting
-
-### **Backend won't start**
-- Check Python version: `python --version` (need 3.11+)
+**Backend won't start**
+- Verify Python 3.11+: `python --version`
 - Activate venv: `source venv/bin/activate`
-- Check `.env` file exists with all required variables
-- Check Supabase connection: verify URL and keys
-- Check Pinecone connection: verify API key and index name
+- Check all required `.env` keys are present
+- Verify Supabase URL/keys and Pinecone API key
 
-### **Frontend won't start**
-- Check Node version: `node --version` (need 18+)
-- Delete `node_modules` and `package-lock.json`, run `npm install`
-- Check `.env` file has `VITE_API_URL` and Supabase credentials
-- Check port 5173 is not in use
+**Frontend won't start**
+- Verify Node 18+: `node --version`
+- Delete `node_modules` + `package-lock.json` and re-run `npm install`
+- Confirm `VITE_API_URL` and Supabase vars are set in `frontend/.env`
 
-### **Authentication not working**
-- Verify `SUPABASE_JWT_SECRET` is set in backend `.env`
-- Check Supabase SQL schema was executed (tables created)
-- Check email confirmation flow in Supabase dashboard
-- Check browser console for auth errors
+**Authentication not working**
+- `SUPABASE_JWT_SECRET` must be set in `backend/.env` (Dashboard → Settings → API → JWT Secret)
+- Confirm `supabase_schema.sql` was executed in the SQL Editor
+- Check email confirmation settings in Supabase Dashboard
 
-### **RAG not returning results**
-- Verify Pinecone index exists with correct name
-- Check embeddings were created (dimension 1536)
-- Verify documents were uploaded successfully
-- Check document registry: `backend/data/document_registry.json`
+**RAG not returning results**
+- Verify Pinecone index exists with name matching `PINECONE_INDEX_NAME` and dimension 1536
+- Confirm documents were uploaded successfully; check `backend/data/document_registry.json`
+- Try lowering research mode to Deep for a broader score threshold (≥ 0.25)
 
-### **Streaming not working**
-- Check SSE endpoint: `POST /api/chat/stream`
-- Verify provider API keys are valid
-- Check browser console for SSE errors
-- Verify CORS is configured correctly
+**Streaming not working**
+- Verify provider API keys are valid and have sufficient quota
+- Check CORS: `CORS_ORIGINS` in backend `.env` must include the frontend origin
+- Check browser console for SSE connection errors
 
 ---
 
-## 📝 License
+## License
 
-MIT License - see LICENSE file for details
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please follow these guidelines:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+MIT License — see LICENSE file for details.
 
 ---
 
-## 📧 Support
+## Acknowledgments
 
-For issues, questions, or feature requests:
-- Open an issue on GitHub
-- Check existing documentation
-- Review troubleshooting section
-
----
-
-## 🙏 Acknowledgments
-
-- OpenAI for GPT models and embedding API
 - Anthropic for Claude models
 - Mistral AI for Mistral models
+- OpenAI for embedding API (text-embedding-3-small)
 - Cohere for Command models
 - Pinecone for vector database
 - Supabase for authentication and PostgreSQL
 - FastAPI and React communities
-
----
-
-**Built with ❤️ for knowledge-intensive organizations**
