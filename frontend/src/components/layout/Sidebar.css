@@ -86,7 +86,7 @@
 }
 
 .sidebar-collapse-btn:hover {
-  background-color: var(--gray-100);
+  background-color: var(--gray-150);
   color: var(--gray-700);
 }
 
@@ -195,7 +195,9 @@
 }
 
 .sidebar.collapsed .sidebar-journey-collapsed {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .sidebar-collapsed-sparkle-btn {
@@ -363,7 +365,7 @@
 }
 
 .conversation-item.active {
-  background-color: var(--gray-200);
+  background-color: var(--gray-150);
 }
 
 .conversation-item-icon {
@@ -475,13 +477,9 @@
   gap: 12px;
   padding: 8px;
   border-radius: 8px;
-  cursor: pointer;
   transition: background-color var(--transition-fast);
 }
 
-.sidebar-user:hover {
-  background-color: var(--gray-100);
-}
 
 .sidebar.collapsed .sidebar-user {
   justify-content: center;
@@ -529,22 +527,26 @@
 }
 
 .sidebar-user-settings {
-  padding: 6px;
+  padding: 4px;
   border-radius: 6px;
   color: var(--gray-400);
   transition: all var(--transition-fast);
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 
 .sidebar-user-settings:hover {
-  background-color: var(--gray-200);
+  background-color: var(--gray-150);
   color: var(--gray-600);
 }
 
 .sidebar-settings-menu {
   position: absolute;
   bottom: calc(100% + 8px);
-  right: 0;
+  left: 0;
   background: white;
   border: 1px solid var(--gray-200);
   border-radius: 8px;
