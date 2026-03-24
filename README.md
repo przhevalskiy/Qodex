@@ -108,7 +108,6 @@ AI-powered research platform with multi-provider RAG, sentence-level citation at
 | `explain` | Explainer | Claude |
 | `compare` | Comparison | Mistral |
 | `builder` | Builder | Claude |
-| `case_analysis` | Case Analysis | Mistral |
 | `generate_questions` | Assessment | Claude |
 | `critique` | Critique | Claude |
 | `methodology` | Methodology | Claude |

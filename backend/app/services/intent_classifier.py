@@ -166,8 +166,7 @@ INTENT_DEFINITIONS = [
     {
         # High-compute authoring intent: user wants to BUILD a long-form document from scratch —
         # case studies, syllabi, curricula, reports, proposals, frameworks, etc.
-        # Distinct from case_analysis (which analyzes existing material).
-        # Invariant: matched BEFORE case_analysis so "build a case study" routes here.
+        # Invariant: matched BEFORE other intents so "build a case study" routes here.
         "intent": "builder",
         "label": "Builder",
         "preferred_provider": "claude",
@@ -253,39 +252,6 @@ INTENT_DEFINITIONS = [
             "- Do NOT truncate or summarize sections — complete every section fully\n"
             "- If the response approaches the output limit, finish the current section cleanly "
             "and add '## [Continued — say \"continue\" for next section]' so the user knows to resume\n\n"
-            "Apply the inference policy: ground all factual claims in retrieved sources; "
-            "state any gaps clearly; label causal bridge connections explicitly rather than presenting them as established fact."
-        ),
-    },
-    {
-        "intent": "case_analysis",
-        "label": "Case Analysis",
-        "preferred_provider": "mistral",
-        "patterns": [
-            r"\bcase stud(y|ies)\b",
-            r"\breal[- ]?world example\b",
-            r"\bpractical (example|application|scenario)\b",
-            r"\bapplication of\b",
-            r"\bhow (is|are|was|were) .+ (used|applied|implemented)\b",
-            r"\bin practice\b",
-            r"\bscenario\b",
-        ],
-        "prompt_suffix": (
-            "\n\n## Output Structure — Case Study\n"
-            "Frame your response as a structured case study:\n"
-            "### Context\n"
-            "- Setting, timeframe, and relevant background\n"
-            "### Stakeholders\n"
-            "- Who is involved and what are their roles or interests?\n"
-            "### Key Challenge\n"
-            "- What problem or question is being addressed?\n"
-            "### Evidence & Analysis\n"
-            "- What do the sources reveal? Include data points where available\n"
-            "### Outcomes\n"
-            "- What happened? What were the results or lessons learned?\n"
-            "### Discussion Questions\n"
-            "- Pose 2-3 questions suitable for classroom discussion\n\n"
-            "Ground all claims in the source material. Flag any inferences clearly.\n\n"
             "Apply the inference policy: ground all factual claims in retrieved sources; "
             "state any gaps clearly; label causal bridge connections explicitly rather than presenting them as established fact."
         ),
