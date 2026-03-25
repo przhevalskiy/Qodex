@@ -1,4 +1,4 @@
-import { Search, Telescope, BookOpen } from 'lucide-react';
+import { Zap, Telescope, Atom } from 'lucide-react';
 import type { ResearchMode } from '@/shared/types';
 
 export interface ResearchModeUIConfig {
@@ -10,7 +10,7 @@ export interface ResearchModeUIConfig {
 
 export const RESEARCH_MODE_UI: Record<ResearchMode, ResearchModeUIConfig> = {
   quick: {
-    icon: Search,
+    icon: Zap,
     label: 'Quick',
     description: 'Searches for most relevant sources',
     rangeLabel: 'up to 7',
@@ -22,7 +22,7 @@ export const RESEARCH_MODE_UI: Record<ResearchMode, ResearchModeUIConfig> = {
     rangeLabel: 'up to 12',
   },
   deep: {
-    icon: BookOpen,
+    icon: Atom,
     label: 'Deep Research',
     description: 'Widest search for exhaustive analysis',
     rangeLabel: 'up to 16',
