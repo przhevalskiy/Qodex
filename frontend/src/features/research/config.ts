@@ -2,7 +2,7 @@ import { Zap, Telescope, Atom } from 'lucide-react';
 import type { ResearchMode } from '@/shared/types';
 
 export interface ResearchModeUIConfig {
-  icon: typeof Search;
+  icon: typeof Zap;
   label: string;
   description: string;
   rangeLabel: string;
