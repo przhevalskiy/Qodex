@@ -20,21 +20,31 @@ class IntentResult:
 
 # Citation format rule injected into every intent prompt.
 _CITATION_POLICY = (
-    "Citation format: place an inline [N] marker immediately after every claim drawn from a "
+    "Citation format: place an inline [N] marker immediately after every statement that conveys information drawn from a "
     "retrieved source (e.g. 'Emissions fell 12% between 2010 and 2020 [1][3]'). "
-    "For reasoning that bridges multiple sources, use [AI:N,M]. "
-    "For claims from general model knowledge not present in the retrieved sources, use [AI]. "
+    "For reasoning that extends or applies concepts from specific sources, use [AI:N,M]. "
+    "For statements from general model knowledge not present in the retrieved sources, use [AI]. "
     "NEVER write 'Source 1', 'Source 2', 'the document', or 'according to the sources' in prose — "
-    "use bracket markers only. Every factual claim must carry at least one marker. "
+    "use bracket markers only. Every statement that conveys information must carry at least one marker. "
+    "THREE MARKERS — choose exactly one per statement:\n"
+    "  [N] — this came directly from source N. The user can click and find it.\n"
+    "  [AI:N,M] — the source gave me the concept or definition; I extended, applied, or connected it using my own reasoning. The source is the foundation, the reasoning is mine. List all source numbers the extension builds from.\n"
+    "  [AI:N] — same as [AI:N,M] but the extension builds from a single source.\n"
+    "  [AI] — this comes entirely from my training knowledge. No source is involved. I would say this even if no sources had been retrieved.\n"
+    "[N] and [AI] are mutually exclusive — NEVER write both on the same statement. "
+    "If a statement is grounded in source N but also extends it with general knowledge, use [AI:N] alone — not [N] followed by [AI].\n"
+    "VERBATIM TEST — before tagging any statement as [N], ask: 'Can I find this specific claim in the source text above?' "
+    "If the source only mentions the topic but does not contain this specific claim, use [AI:N] or [AI] instead.\n"
     "CRITICAL: Citation markers are TOKENS ONLY — [1], [AI], [AI:1,3]. "
     "NEVER embed text inside a marker. Do NOT write [AI: explanation], [AI: text here], or any variant with words inside the brackets. "
-    "NEVER place a citation marker at the START of a sentence — markers must always follow the claim they support, not precede it. "
+    "NEVER place a citation marker at the START of a sentence — markers must always follow the statement they support, not precede it. "
     "CRITICAL PLACEMENT RULE for [AI:N,M] and [AI]: these markers MUST appear at the END of the inference sentence they label, "
     "immediately before the sentence-ending period. NEVER place [AI:N,M] or [AI] immediately after a [N] numeric citation — "
     "that position has no inference sentence before it. "
     "CORRECT: 'Grid extension costs make solar the only viable option [AI:1,2].' "
     "WRONG: '...grid connection costs [1]. [AI:1,2] Solar becomes viable...' "
-    "This rule applies to ALL sentences including summaries, key takeaways, and concluding statements — they are not exempt from citation requirements."
+    "This rule applies to ALL sentences — introductory framing sentences, analogies, topic overviews, summaries, key takeaways, and concluding statements are NOT exempt. "
+    "If you open a response with an analogy or framing sentence, that sentence must carry [AI] if it comes from training knowledge. No sentence may be left uncited."
 )
 
 
@@ -102,7 +112,7 @@ INTENT_DEFINITIONS = [
             "### Limitations\n"
             "- Note any caveats, gaps, or scope boundaries\n\n"
             "Use precise language. Distinguish between evidence-backed claims and interpretive statements.\n\n"
-            "Apply the inference policy: ground all factual claims in retrieved sources; "
+            "Apply the inference policy: ground every sentence in retrieved sources;"
             "state any gaps clearly; label causal bridge connections explicitly rather than presenting them as established fact."
         ),
     },
@@ -130,7 +140,7 @@ INTENT_DEFINITIONS = [
             "- Highlight cause-and-effect relationships explicitly\n"
             "- End with a 'Key Takeaway' sentence that captures the core idea — this sentence must also carry citation markers like any other factual claim\n\n"
             "Avoid jargon without explanation. If a term is domain-specific, explain it.\n\n"
-            "Apply the inference policy: ground all factual claims in retrieved sources; "
+            "Apply the inference policy: ground every sentence in retrieved sources;"
             "state any gaps clearly; label causal bridge connections explicitly rather than presenting them as established fact."
         ),
     },
@@ -159,7 +169,7 @@ INTENT_DEFINITIONS = [
             "- What patterns emerge? Where do they converge or diverge?\n"
             "- What are the practical implications of these differences?\n\n"
             "Be balanced — present each perspective with equal rigor.\n\n"
-            "Apply the inference policy: ground all factual claims in retrieved sources; "
+            "Apply the inference policy: ground every sentence in retrieved sources;"
             "state any gaps clearly; label causal bridge connections explicitly rather than presenting them as established fact."
         ),
     },
@@ -252,7 +262,7 @@ INTENT_DEFINITIONS = [
             "- Do NOT truncate or summarize sections — complete every section fully\n"
             "- If the response approaches the output limit, finish the current section cleanly "
             "and add '## [Continued — say \"continue\" for next section]' so the user knows to resume\n\n"
-            "Apply the inference policy: ground all factual claims in retrieved sources; "
+            "Apply the inference policy: ground every sentence in retrieved sources;"
             "state any gaps clearly; label causal bridge connections explicitly rather than presenting them as established fact."
         ),
     },
@@ -290,7 +300,7 @@ INTENT_DEFINITIONS = [
             "- Use [AI] if the question draws on general model knowledge not present in the retrieved sources\n"
             "IMPORTANT: Citation markers must be tokens only — [1], [AI], [AI:1,3] — never add text inside the brackets. Do NOT write [AI: explanation] or [AI: text here].\n"
             "Every question must end with at least one citation marker.\n\n"
-            "Apply the inference policy: ground all factual claims in retrieved sources; "
+            "Apply the inference policy: ground every sentence in retrieved sources;"
             "state any gaps clearly; label causal bridge connections explicitly rather than presenting them as established fact."
         ),
     },
@@ -323,7 +333,7 @@ INTENT_DEFINITIONS = [
             "- Weigh the strengths against weaknesses\n"
             "- How should a reader calibrate their confidence in the claims?\n\n"
             "Distinguish between factual gaps and interpretive disagreements.\n\n"
-            "Apply the inference policy: ground all factual claims in retrieved sources; "
+            "Apply the inference policy: ground every sentence in retrieved sources;"
             "state any gaps clearly; label causal bridge connections explicitly rather than presenting them as established fact."
         ),
     },
@@ -352,7 +362,7 @@ INTENT_DEFINITIONS = [
             "### Validity & Reliability\n"
             "- How robust is the methodology? Any concerns about generalizability?\n\n"
             "Be specific about what the sources actually describe vs. what you are inferring.\n\n"
-            "Apply the inference policy: ground all factual claims in retrieved sources; "
+            "Apply the inference policy: ground every sentence in retrieved sources;"
             "state any gaps clearly; label causal bridge connections explicitly rather than presenting them as established fact."
         ),
     },
@@ -388,7 +398,7 @@ INTENT_DEFINITIONS = [
             "### Recommended Readings\n"
             "- Reference relevant sources from the documents\n\n"
             "Target a graduate-level audience unless otherwise specified.\n\n"
-            "Apply the inference policy: ground all factual claims in retrieved sources; "
+            "Apply the inference policy: ground every sentence in retrieved sources;"
             "state any gaps clearly; label causal bridge connections explicitly rather than presenting them as established fact."
         ),
     },
@@ -512,7 +522,7 @@ def classify_intent(message: str, has_attachments: bool = False) -> IntentResult
             "Do NOT use section headers like 'Direct Answer' in your response.\n\n"
             "Adapt depth to the complexity of the question. Simple questions deserve concise answers; "
             "complex questions warrant thorough exploration. Always ground claims in source material.\n\n"
-            "Apply the inference policy: ground all factual claims in retrieved sources; "
+            "Apply the inference policy: ground every sentence in retrieved sources;"
             "state any gaps clearly; label causal bridge connections explicitly rather than presenting them as established fact.\n\n"
         ) + _CITATION_POLICY,
         use_knowledge_base=use_kb,
