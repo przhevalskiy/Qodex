@@ -45,46 +45,6 @@ function startsWithEmoji(text: string): boolean {
   return false;
 }
 
-/**
- * Parse citation markers [N] and replace with citation components
- */
-function processCitations(text: string, sources?: DocumentSource[]): React.ReactNode[] {
-  if (!text) return [text];
-
-  // Regex to match [N] where N is one or more digits
-  const citationRegex = /\[(\d+)\]/g;
-  const parts: React.ReactNode[] = [];
-  let lastIndex = 0;
-  let match;
-
-  while ((match = citationRegex.exec(text)) !== null) {
-    // Add text before citation
-    if (match.index > lastIndex) {
-      parts.push(text.substring(lastIndex, match.index));
-    }
-
-    // Add citation component
-    const citationNumber = parseInt(match[1], 10);
-    const source = sources?.find(s => s.citation_number === citationNumber);
-
-    parts.push(
-      <InlineCitation
-        key={`cite-${match.index}-${citationNumber}`}
-        number={citationNumber}
-        source={source}
-      />
-    );
-
-    lastIndex = match.index + match[0].length;
-  }
-
-  // Add remaining text
-  if (lastIndex < text.length) {
-    parts.push(text.substring(lastIndex));
-  }
-
-  return parts.length > 0 ? parts : [text];
-}
 
 function normalizeBulletPoints(content: string): string {
   // Convert • and · bullet characters at line-start to proper markdown list markers
@@ -248,7 +208,7 @@ const markdownComponents = {
     return <h4>{children}</h4>;
   },
   // Suppress numeric citations when no sources available; still render [AI] chips
-  citation({ number, ai }: { number?: number; ai?: string; aisources?: string }) {
+  citation({ ai }: { number?: number; ai?: string; aisources?: string }) {
     if (ai) return <InlineCitation ai={true} />;
     return null;
   },
