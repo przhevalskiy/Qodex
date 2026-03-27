@@ -540,6 +540,12 @@ class DocumentService:
         if re.match(r'^[-_*]{3,}\s*$', line):
             return True
 
+        # Short title-like lines (course/section headings) — always start new
+        # Prevents PDF line-joiner from merging "Business & Climate Change" into
+        # the preceding institution/header line, which breaks course title extraction.
+        if self._is_title_like(line):
+            return True
+
         # After sentence boundary, only break if new line is substantial (>= 40 chars)
         prev_text = ' '.join(buffer)
         prev_ended_sentence = bool(re.search(r'[.!?]\s*$', prev_text))

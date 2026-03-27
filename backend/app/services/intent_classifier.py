@@ -119,7 +119,7 @@ INTENT_DEFINITIONS = [
     {
         "intent": "explain",
         "label": "Explainer",
-        "preferred_provider": "mistral",
+        "preferred_provider": "claude",
         "patterns": [
             r"\bexplain\b",
             r"\bsimpl(er|ify|e terms)\b",
@@ -184,7 +184,8 @@ INTENT_DEFINITIONS = [
         "patterns": [
             # Explicit "case study" phrase match — catches "write a detailed case study", etc.
             r"\b(build|create|write|draft|develop|construct|generate|produce)\b.{0,40}\bcase stud(y|ies)\b",
-            r"\b(build|create|write|draft|develop|construct|generate|produce) (a |an |the |this |new |full |complete |entire )?(new |full |complete |entire )?(case|syllabus|syllabi|curriculum|curricula|course|report|proposal|framework|document|guide|handbook|plan)\b",
+            r"\b(build|create|write|draft|develop|construct|generate|produce|design) (a |an |the |this |new |full |complete |entire )?(new |full |complete |entire )?(case|syllabus|syllabi|curriculum|curricula|course|report|proposal|framework|document|guide|handbook|plan|slides?|deck|presentation|program)\b",
+            r"\b(update|revise|improve|refresh|redesign|rework) .{0,40}(syllabus|syllabi|curriculum|curricula|course|slides?|deck|presentation|materials?|module)\b",
             r"\bmimick(ing)?\b",
             r"\bmodeled? after\b",
             r"\bfrom scratch\b",
@@ -241,6 +242,13 @@ INTENT_DEFINITIONS = [
             "(Include rubric weights as a Markdown table)\n"
             "## Grading Policy\n"
             "## Required & Recommended Readings\n\n"
+
+            "### For SLIDES or a PRESENTATION DECK, use this structure:\n"
+            "# [Presentation Title]\n"
+            "## Slide 1: Title & Agenda\n"
+            "## Slide 2–N: [Topic Slides — one key idea per slide]\n"
+            "(For each slide: a bold headline, 3–5 bullet points, and a 'Speaker Note' line with elaboration)\n"
+            "## Final Slide: Key Takeaways & Discussion Questions\n\n"
 
             "### For a REPORT or PROPOSAL, use these exact section headers:\n"
             "# [Report/Proposal Title]\n"
@@ -373,6 +381,7 @@ INTENT_DEFINITIONS = [
         "patterns": [
             r"\blesson plan\b",
             r"\bteaching (plan|strategy|approach|activity|activities)\b",
+            r"\b(design|create|build|plan|develop) (a |an )?(session|workshop|module)\b",
             r"\bhow (to|would you|should I) teach\b",
             r"\bclassroom (activity|activities|exercise|discussion)\b",
             r"\bcurriculum\b",
@@ -398,6 +407,36 @@ INTENT_DEFINITIONS = [
             "### Recommended Readings\n"
             "- Reference relevant sources from the documents\n\n"
             "Target a graduate-level audience unless otherwise specified.\n\n"
+            "Apply the inference policy: ground every sentence in retrieved sources;"
+            "state any gaps clearly; label causal bridge connections explicitly rather than presenting them as established fact."
+        ),
+    },
+    {
+        "intent": "find_readings",
+        "label": "Reading List",
+        "preferred_provider": "mistral",
+        "patterns": [
+            r"\b(find|suggest|recommend|list|give me|show me|what are).{0,30}(readings?|materials?|resources?|texts?|articles?|papers?|books?)\b",
+            r"\b(supplementary|additional|related|relevant|required|optional) (readings?|materials?|resources?|texts?)\b",
+            r"\breading list\b",
+            r"\bwhat (should|can|could) (i|we|students?) read\b",
+            r"\bwhat (books?|papers?|articles?|texts?) (cover|discuss|address|explore)\b",
+            r"\b(teaching|course) materials?\b",
+        ],
+        "prompt_suffix": (
+            "\n\n## Output Structure — Reading List\n"
+            "Surface readings and materials directly referenced in the retrieved syllabi.\n"
+            "Do NOT recommend readings from general knowledge — only surface what appears in the sources.\n\n"
+            "### Required Readings\n"
+            "List readings marked as required or assigned. For each:\n"
+            "- **Title** — Author(s) [N]\n"
+            "  - *Why*: one sentence on what it covers and why it fits\n\n"
+            "### Recommended / Supplementary Readings\n"
+            "List readings marked as recommended, optional, or supplementary. Same format as above.\n\n"
+            "### Other Teaching Materials\n"
+            "List any case studies, datasets, videos, or tools referenced in the sources.\n\n"
+            "If a reading appears in multiple sources, note all relevant citations [N][M].\n"
+            "Do not fabricate titles, authors, or publication details — cite only what is explicitly in the sources.\n\n"
             "Apply the inference policy: ground every sentence in retrieved sources;"
             "state any gaps clearly; label causal bridge connections explicitly rather than presenting them as established fact."
         ),

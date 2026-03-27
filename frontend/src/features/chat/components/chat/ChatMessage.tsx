@@ -54,7 +54,18 @@ function normalizeBulletPoints(content: string): string {
 function normalizeSourceCitations(content: string): string {
   // Mistral sometimes echoes the context header format "[Source N]" as prose
   // (e.g. "Referenced in [Source 2]"). Convert to proper inline markers [N].
-  return content.replace(/\[Source\s+(\d+)\]/gi, '[$1]');
+  content = content.replace(/\[Source\s+(\d+)\]/gi, '[$1]');
+  // Mistral sometimes places [N][AI] on the same statement, violating the
+  // mutual-exclusivity rule. Convert [N][AI] → [AI:N] (source gave the concept,
+  // model extended it). Handles multiple source numbers: [1][2][AI] → [AI:1,2]
+  content = content.replace(
+    /((?:\[\d+\])+)\[AI\]/g,
+    (_match, nums) => {
+      const sources = [...nums.matchAll(/\[(\d+)\]/g)].map(m => m[1]).join(',');
+      return `[AI:${sources}]`;
+    }
+  );
+  return content;
 }
 
 function splitInlineListFields(content: string): string {
@@ -155,6 +166,7 @@ const intentLabels: Record<string, string> = {
   critique: 'Critique',
   methodology: 'Methodology',
   lesson_plan: 'Lesson Plan',
+  find_readings: 'Reading List',
 };
 
 const intentDescriptions: Record<string, string> = {
@@ -167,6 +179,7 @@ const intentDescriptions: Record<string, string> = {
   critique: 'Balanced critical analysis of retrieved content — strengths, gaps, methodological concerns, and alternative perspectives.',
   methodology: 'Reviews research design, data sources, and analytical approach from retrieved materials. Distinguishes retrieved facts from interpretation.',
   lesson_plan: 'Designs teaching resources synthesised from retrieved syllabi content. Targets graduate-level audience unless otherwise specified.',
+  find_readings: 'Surfaces required and supplementary readings directly from retrieved syllabi. Does not fabricate titles or authors.',
 };
 
 const allIntents = [
@@ -179,6 +192,7 @@ const allIntents = [
   { key: 'critique', label: 'Critique', desc: 'Strengths & gaps analysis' },
   { key: 'methodology', label: 'Methodology', desc: 'Research design from sources' },
   { key: 'lesson_plan', label: 'Lesson Plan', desc: 'Teaching resources from syllabi' },
+  { key: 'find_readings', label: 'Reading List', desc: 'Readings & materials from sources' },
 ];
 
 
