@@ -11,6 +11,7 @@ import io
 
 from app.models.document import Document, DocumentChunk
 from app.services.pinecone_service import get_pinecone_service
+from app.utils.course_utils import extract_course_title_from_content
 
 logger = logging.getLogger(__name__)
 
@@ -604,6 +605,13 @@ class DocumentService:
         chunk_contents = [c["content"] for c in chunks]
         embeddings = await self.pinecone.create_embeddings_batch(chunk_contents)
 
+        # Extract course title from first chunk for metadata tagging.
+        # Stored on every chunk so Pinecone metadata filters can scope
+        # retrieval to a specific course at query time.
+        course_name = extract_course_title_from_content(
+            [c["content"] for c in chunks[:1]]
+        ) or ""
+
         # Prepare vectors for Pinecone with structure metadata
         vectors = []
         chunk_ids = []
@@ -618,7 +626,8 @@ class DocumentService:
                     "filename": filename,
                     "chunk_index": i,
                     "content": chunk_data["content"],
-                    "content_type": chunk_data["type"]  # heading, paragraph, list
+                    "content_type": chunk_data["type"],  # heading, paragraph, list
+                    "course_name": course_name,
                 }
             })
 
