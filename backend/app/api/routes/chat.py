@@ -25,6 +25,7 @@ from app.services.discussion_service import get_discussion_service
 from app.utils.streaming import create_sse_response, format_sse_event
 from app.services.intent_classifier import classify_intent, INTENT_LOOKUP, CONTINUATION_INSTRUCTION
 from app.auth import get_current_user_id
+from app.utils.course_utils import extract_course_title_from_content
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 logger = logging.getLogger(__name__)
@@ -184,39 +185,6 @@ def _extract_person_names(query: str) -> List[str]:
             used_positions.update([i, i+1])
 
     return list(found_names)
-
-
-def _extract_course_title_from_content(chunks: List[str]) -> Optional[str]:
-    """Extract the course title from syllabus chunk content.
-
-    Course titles appear on the first page of a syllabus — typically a short
-    line of 3-10 words with mostly capitalized words.  Scans the first chunk
-    for candidate lines and returns the best match.
-    """
-    if not chunks:
-        return None
-
-    first_chunk = chunks[0]
-    lines = [l.strip() for l in first_chunk.splitlines() if l.strip()]
-
-    for line in lines[:30]:  # Only scan the top of the first chunk
-        words = line.split()
-        if len(words) < 3 or len(words) > 12:
-            continue
-        if len(line) > 120:
-            continue
-        # Skip lines that look like dates, emails, URLs, or bullet points
-        if re.search(r'[@/\\:|•●]|^\d', line):
-            continue
-        # Count capitalized words (excluding short stop words)
-        cap_count = sum(
-            1 for w in words
-            if w and w[0].isupper() and w.lower() not in {"the", "and", "of", "in", "a", "an", "for", "to"}
-        )
-        if cap_count >= max(2, len(words) // 2):
-            return line
-
-    return None
 
 
 def _extract_course_name(query: str) -> Optional[str]:
@@ -681,6 +649,23 @@ async def stream_chat(
                         group["best_score"] = effective_score
                         group["best_chunk_id"] = chunk_id
                         group["best_preview"] = _make_chunk_preview(content)
+
+            # Deduplicate by filename: if the same physical file was ingested
+            # multiple times (e.g. via --force without clearing Pinecone first),
+            # it will appear under different document_ids.  Merge those entries,
+            # keeping the highest-score group for each unique filename.
+            seen_filenames: dict = {}  # filename -> doc_id of best group
+            for doc_id, group in list(doc_groups.items()):
+                fname = group["filename"]
+                if fname not in seen_filenames:
+                    seen_filenames[fname] = doc_id
+                else:
+                    existing_id = seen_filenames[fname]
+                    if group["best_score"] > doc_groups[existing_id]["best_score"]:
+                        del doc_groups[existing_id]
+                        seen_filenames[fname] = doc_id
+                    else:
+                        del doc_groups[doc_id]
 
             # Cap to research_config.top_k documents (over-fetch was for
             # casting a wider net; now trim back to the requested depth).
