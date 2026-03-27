@@ -543,7 +543,7 @@ async def stream_chat(
         # irrelevant documents (e.g., other professors' syllabi when asking about
         # "Bruce Usher's readings").
         if not search_doc_ids:
-            person_names = _extract_person_names(request.message)
+            person_names = _extract_person_names(search_query)
             if person_names:
                 # Try to find documents by the first detected person (primary entity)
                 instructor_docs = doc_service.get_documents_by_instructor(person_names[0])
@@ -554,7 +554,7 @@ async def stream_chat(
                 else:
                     logger.debug(f"Instructor '{person_names[0]}' not found in index, using full corpus")
             else:
-                logger.debug(f"No person names detected in query: {request.message}")
+                logger.debug(f"No person names detected in query: {search_query}")
 
         # Over-fetch from Pinecone so entity-boosted re-ranking has enough
         # candidates.  Entity-name queries ("bruce usher") score low
