@@ -320,10 +320,15 @@ async def _rewrite_search_query(
 
         client = Mistral(api_key=settings.mistral_api_key)
 
-        # Compact history: last few user messages (excluding the current one,
-        # which was already added to the DB before context_messages was fetched)
-        recent = [m.content for m in prior_user_msgs[-3:]]
-        history_lines = "\n".join(f"- {msg}" for msg in recent)
+        # Compact history: last 3 exchanges (user + assistant pairs) so the
+        # rewriter can resolve "these courses", "they", "that approach", etc.
+        # Assistant messages are truncated to avoid blowing the rewriter context.
+        recent_msgs = context_messages[-6:]
+        history_lines = "\n".join(
+            f"{'User' if m.role == MessageRole.USER else 'Assistant'}: "
+            f"{m.content[:600] if m.role != MessageRole.USER else m.content}"
+            for m in recent_msgs
+        )
 
         response = await client.chat.complete_async(
             model="mistral-small-latest",
@@ -331,10 +336,12 @@ async def _rewrite_search_query(
                 {
                     "role": "system",
                     "content": (
-                        "You are a search query rewriter. Given prior questions and a follow-up, "
+                        "You are a search query rewriter. Given prior conversation and a follow-up, "
                         "rewrite the follow-up into a standalone search query.\n\n"
                         "Rules:\n"
-                        "- Resolve pronouns (he, she, it, they, this, that) using context\n"
+                        "- Resolve pronouns (he, she, it, they, this, that, these) using context\n"
+                        "- 'These courses' / 'those instructors' etc. should resolve to the specific "
+                        "courses or people named in the previous assistant reply\n"
                         "- If the follow-up already names a specific person/topic, return it unchanged\n"
                         "- If the follow-up is a completely new topic, return it unchanged\n"
                         "- Keep the rewritten query concise and natural\n"
@@ -344,7 +351,7 @@ async def _rewrite_search_query(
                 {
                     "role": "user",
                     "content": (
-                        f"Previous questions:\n{history_lines}\n\n"
+                        f"Conversation so far:\n{history_lines}\n\n"
                         f"Follow-up: {current_message}\n\n"
                         "Rewritten query:"
                     ),
