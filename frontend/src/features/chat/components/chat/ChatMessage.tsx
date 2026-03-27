@@ -51,6 +51,46 @@ function normalizeBulletPoints(content: string): string {
   return content.replace(/^[•·] /gm, '- ');
 }
 
+function normalizeSourceCitations(content: string): string {
+  // Mistral sometimes echoes the context header format "[Source N]" as prose
+  // (e.g. "Referenced in [Source 2]"). Convert to proper inline markers [N].
+  return content.replace(/\[Source\s+(\d+)\]/gi, '[$1]');
+}
+
+function splitInlineListFields(content: string): string {
+  // Mistral sometimes outputs bold metadata labels (**Authors**: ..., **Relevance**: ...)
+  // inline within a single list item instead of on separate lines.
+  // This splits them so each label starts on its own line.
+  const lines = content.split('\n');
+  const result: string[] = [];
+
+  for (const line of lines) {
+    const listMatch = line.match(/^(\s*(?:[-*+]|\d+\.)\s+)(.+)$/);
+    if (!listMatch) {
+      result.push(line);
+      continue;
+    }
+
+    const [, prefix, body] = listMatch;
+    const indent = ' '.repeat(prefix.length);
+
+    // Split on a bold capitalized label that appears after some content
+    // e.g. "Title [1] **Authors**: ..." → split before **Authors**
+    const parts = body.split(/(?<=\S)\s+(?=\*\*[A-Z][^*\n]*\*\*:)/);
+
+    if (parts.length <= 1) {
+      result.push(line);
+    } else {
+      result.push(prefix + parts[0]);
+      for (let i = 1; i < parts.length; i++) {
+        result.push(indent + parts[i]);
+      }
+    }
+  }
+
+  return result.join('\n');
+}
+
 function processEmojiLists(content: string): string {
   const lines = content.split('\n');
   const processedLines: string[] = [];
@@ -251,7 +291,7 @@ export const ChatMessage = memo(function ChatMessage({ message, isStreaming, onR
 
   // Skip expensive emoji processing during streaming — AnimatedMarkdown uses raw content
   const processedContent = useMemo(
-    () => isStreaming ? '' : processEmojiLists(normalizeBulletPoints(message.content)),
+    () => isStreaming ? '' : processEmojiLists(splitInlineListFields(normalizeSourceCitations(normalizeBulletPoints(message.content)))),
     [message.content, isStreaming]
   );
 
