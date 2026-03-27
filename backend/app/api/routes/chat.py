@@ -186,6 +186,113 @@ def _extract_person_names(query: str) -> List[str]:
     return list(found_names)
 
 
+def _extract_course_title_from_content(chunks: List[str]) -> Optional[str]:
+    """Extract the course title from syllabus chunk content.
+
+    Course titles appear on the first page of a syllabus — typically a short
+    line of 3-10 words with mostly capitalized words.  Scans the first chunk
+    for candidate lines and returns the best match.
+    """
+    if not chunks:
+        return None
+
+    first_chunk = chunks[0]
+    lines = [l.strip() for l in first_chunk.splitlines() if l.strip()]
+
+    for line in lines[:30]:  # Only scan the top of the first chunk
+        words = line.split()
+        if len(words) < 3 or len(words) > 12:
+            continue
+        if len(line) > 120:
+            continue
+        # Skip lines that look like dates, emails, URLs, or bullet points
+        if re.search(r'[@/\\:|•●]|^\d', line):
+            continue
+        # Count capitalized words (excluding short stop words)
+        cap_count = sum(
+            1 for w in words
+            if w and w[0].isupper() and w.lower() not in {"the", "and", "of", "in", "a", "an", "for", "to"}
+        )
+        if cap_count >= max(2, len(words) // 2):
+            return line
+
+    return None
+
+
+def _extract_course_name(query: str) -> Optional[str]:
+    """Extract a specific course title from a query if one is referenced.
+
+    Looks for patterns like:
+    - "find <Course Title> and prepare/help/summarize/..."
+    - "prepare me for <Course Title> week/class/session"
+
+    The task-verb anchor prevents matching the first incidental "and" inside
+    the course title itself (e.g. "Global Institutions and the Architecture...").
+
+    Returns the extracted course title string, or None if no specific course
+    is detected.  The title is returned in its original casing.
+    """
+    task_verbs = r'(?:prepare|help|tell|show|explain|give|summarize|map|create|find|get)'
+
+    # Pattern: "find <Title> and <task-verb>" — anchors on the task verb so the
+    # greedy match captures the full title including any "and" within it.
+    m = re.search(
+        r'\bfind\s+(.+?)\s+and\s+' + task_verbs + r'\b',
+        query, re.IGNORECASE
+    )
+    if m:
+        candidate = m.group(1).strip()
+        words = candidate.split()
+        if len(words) >= 3 and words[0][0].isupper():
+            return candidate
+
+    # Pattern: "for <Title> week|class|course|session"
+    m = re.search(
+        r'\bfor\s+([A-Z][^,\.?!]+?)\s+(?:week|class|course|session)\b',
+        query, re.IGNORECASE
+    )
+    if m:
+        candidate = m.group(1).strip()
+        if len(candidate.split()) >= 3:
+            return candidate
+
+    return None
+
+
+def _course_found_in_chunks(course_name: str, doc_groups: List) -> bool:
+    """Check whether retrieved chunks contain the queried course title.
+
+    Uses n-gram phrase matching rather than individual term matching.
+    Generic topic words like "climate" or "finance" appear in every syllabus,
+    so single-term checks produce false positives.  Instead, this function
+    builds 4-word sliding windows from the course title and checks whether
+    any such phrase appears verbatim in any retrieved chunk.  A specific
+    4-gram like "Architecture of Global Climate" is unlikely to appear in a
+    different course's material.
+
+    Returns True if the course appears to be present, False if it looks absent.
+    """
+    title_words = re.findall(r'[a-zA-Z]+', course_name)
+    if len(title_words) < 4:
+        return True  # Title too short to discriminate reliably — don't false-positive
+
+    # Build 4-word n-grams from the course title (lowercased for comparison)
+    ngram_size = 4
+    title_ngrams = [
+        " ".join(title_words[i:i + ngram_size]).lower()
+        for i in range(len(title_words) - ngram_size + 1)
+    ]
+
+    for _, group in doc_groups:
+        combined = " ".join(group["chunks"]).lower()
+        # Normalize whitespace in combined content for reliable substring search
+        combined = re.sub(r'\s+', ' ', combined)
+        if any(ngram in combined for ngram in title_ngrams):
+            return True
+
+    return False
+
+
 def _sanitize_history_messages(messages: List[Message]) -> List[Message]:
     """Strip stale source facts from old assistant messages.
 
@@ -607,6 +714,30 @@ async def stream_chat(
 
             if context_parts:
                 context = "\n\n---\n\n".join(context_parts)
+
+                # Course mismatch check: if the user asked about a specific named
+                # course but none of the retrieved chunks contain that course title,
+                # the course isn't in the dataset.  Surface this explicitly rather
+                # than silently synthesizing from unrelated material.
+                detected_course = _extract_course_name(request.message)
+                course_not_found_response = None
+                if detected_course and not _course_found_in_chunks(detected_course, sorted_groups):
+                    course_not_found_response = detected_course
+                    # Force Claude for this response — it follows stop instructions reliably
+                    effective_provider = "claude"
+                    claude_key, claude_model = provider_configs.get("claude", (None, None))
+                    if claude_key:
+                        provider = ProviderRegistry.get_provider("claude", claude_key, claude_model)
+                    context = (
+                        f"[SYSTEM NOTE: The user asked about '{detected_course}' "
+                        f"but this course was not found in the dataset.]\n\n"
+                        "STRICT RESPONSE RULES — follow exactly:\n"
+                        "1. In one sentence, tell the user the specific course was not found\n"
+                        f"2. List the available related courses as bullets, citing each with its [Source N] number\n"
+                        "3. Ask ONE brief question: would they like help using one of these instead?\n"
+                        "4. Your response ends immediately after that question — nothing else\n"
+                        "5. Do NOT add notes, summaries, outlines, readings, or any analysis"
+                    )
             else:
                 # Knowledge base was queried but nothing scored high enough.
                 # Tell the AI explicitly so it doesn't fabricate from thin air.
