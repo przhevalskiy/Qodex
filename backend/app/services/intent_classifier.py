@@ -119,7 +119,7 @@ INTENT_DEFINITIONS = [
     {
         "intent": "explain",
         "label": "Explainer",
-        "preferred_provider": "claude",
+        "preferred_provider": "mistral",
         "patterns": [
             r"\bexplain\b",
             r"\bsimpl(er|ify|e terms)\b",
