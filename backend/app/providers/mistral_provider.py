@@ -54,6 +54,8 @@ class MistralProvider(BaseProvider):
                 "- Citations must immediately follow the claim with no space between the claim and the bracket: 'claim [N]' not 'claim  [N]' or 'claim .'\n"
                 "- NEVER end a sentence or bullet with a space before the period — if a citation follows, write 'claim [N].' not 'claim .' \n"
                 "- CRITICAL: [AI:N,M] and [AI] markers must appear at the END of the inference sentence, before its period. NEVER place them immediately after a [N] numeric citation. CORRECT: 'This implies X [AI:1,2].' WRONG: '...fact [1]. [AI:1,2] This implies X.'\n"
+                "- NEVER place any citation marker ([N], [AI], [AI:N,M]) at the START of a sentence or paragraph — the marker always follows the text it labels, never precedes it.\n"
+                "- NEVER write 'Inference:', 'Note:', 'Observation:', 'AI Reasoning:', or any similar label as text in your response — the citation marker itself is the label. Just write the claim, then the marker.\n"
                 "- Cite from ALL sources that contain relevant information — do not omit retrieved sources that support the answer\n"
                 "- When adding context, explanation, or reasoning not directly supported by the retrieved sources, label it with [AI:N,M] or [AI] (see below)\n\n"
                 "INFERENCE POLICY — Three markers:\n"

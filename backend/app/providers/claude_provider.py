@@ -80,6 +80,8 @@ class ClaudeProvider(BaseProvider):
                 "- If a statement is grounded in source N but also extends it with general knowledge, use [AI:N] alone — not [N] followed by [AI].\n"
                 "- Do NOT apply [AI:N,M] or [AI] to statements already cited with [N].\n"
                 "- CRITICAL PLACEMENT RULE: [AI:N,M] and [AI] MUST appear at the END of the sentence they label, immediately before the period. NEVER place them immediately after a [N] numeric citation.\n"
+                "- NEVER place any citation marker ([N], [AI], [AI:N,M]) at the START of a sentence or paragraph — the marker always follows the text it labels, never precedes it.\n"
+                "- NEVER write 'Inference:', 'Note:', 'Observation:', 'AI Reasoning:', or any similar label as text in your response — the citation marker itself is the label. Just write the claim, then the marker.\n"
                 "- Apply at the sentence level, inline — not only at paragraph ends.\n"
                 "Examples:\n"
                 "  'Carbon credits function like tradeable permits for emissions. [AI]'\n"

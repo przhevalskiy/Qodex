@@ -65,6 +65,15 @@ function normalizeSourceCitations(content: string): string {
       return `[AI:${sources}]`;
     }
   );
+  // Citations must follow the text they label, never precede it.
+  // If a citation marker appears at the start of a line (before any text),
+  // move it to the end of that line, preserving trailing punctuation.
+  // e.g. "[AI:1,2] Some claim." → "Some claim. [AI:1,2]"
+  // e.g. "[AI:1,2] **Inference**: NYC's governance..." → "**Inference**: NYC's governance... [AI:1,2]"
+  content = content.replace(
+    /^(\[(?:AI(?::\d+(?:,\d+)*)?|\d+(?:,\d+)*)\])\s+(.+?)([.!?]?)$/gm,
+    (_match, citation, body, punct) => punct ? `${body} ${citation}${punct}` : `${body} ${citation}`
+  );
   return content;
 }
 
