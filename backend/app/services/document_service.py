@@ -615,7 +615,8 @@ class DocumentService:
         # Stored on every chunk so Pinecone metadata filters can scope
         # retrieval to a specific course at query time.
         course_name = extract_course_title_from_content(
-            [c["content"] for c in chunks[:1]]
+            [c["content"] for c in chunks[:1]],
+            filename=filename,
         ) or ""
 
         # Prepare vectors for Pinecone with structure metadata

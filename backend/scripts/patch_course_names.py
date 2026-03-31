@@ -78,8 +78,8 @@ async def patch_course_names():
             first_content = metadata.get("content", "")
             filename = metadata.get("filename", "")
 
-            # Extract course name from first chunk content
-            course_name = extract_course_title_from_content([first_content]) or ""
+            # Extract course name from first chunk content (filename as fallback)
+            course_name = extract_course_title_from_content([first_content], filename=filename) or ""
 
             # Skip only if already has a non-empty course_name
             if existing_course and existing_course == course_name:
