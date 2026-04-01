@@ -466,7 +466,10 @@ class DocumentService:
         reader = PdfReader(io.BytesIO(content))
         text = ""
         for page in reader.pages:
-            page_text = page.extract_text() or ""
+            try:
+                page_text = page.extract_text() or ""
+            except Exception:
+                page_text = ""
             text += page_text + "\n"
 
         # Clean up the extracted text
