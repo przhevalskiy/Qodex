@@ -103,8 +103,8 @@
 }
 
 @keyframes intentTooltipFadeIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .intent-tooltip-header {
@@ -163,7 +163,8 @@
 }
 
 .intent-tooltip-item.active {
-  background-color: var(--gray-50);
+  background-color: var(--brand-50);
+  padding-left: 8px;
 }
 
 .intent-tooltip-dot {
@@ -184,7 +185,7 @@
 }
 
 .intent-tooltip-item.active .intent-tooltip-item-indicator {
-  color: var(--gray-700, #374151);
+  color: var(--brand-600);
 }
 
 .intent-tooltip-item-dash {

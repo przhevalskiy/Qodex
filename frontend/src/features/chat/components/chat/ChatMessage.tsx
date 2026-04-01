@@ -194,7 +194,7 @@ const intentDescriptions: Record<string, string> = {
 const allIntents = [
   { key: 'generalist', label: 'Generalist', desc: 'Cited answers, adaptive depth' },
   { key: 'summarize', label: 'Summary', desc: 'Key findings, minimal inference' },
-  { key: 'explain', label: 'Explainer', desc: 'Simplified — may elaborate beyond sources' },
+  { key: 'explain', label: 'Explainer', desc: 'Concepts broken down simply' },
   { key: 'compare', label: 'Comparison', desc: 'Evidence-based, side-by-side' },
   { key: 'builder', label: 'Builder', desc: 'Full documents from scratch' },
   { key: 'generate_questions', label: 'Assessment', desc: 'Quiz & exam from source content' },
@@ -299,7 +299,15 @@ export const ChatMessage = memo(function ChatMessage({ message, isStreaming, onR
   const handleIntentMouseEnter = useCallback(() => {
     if (!intentChipRef.current) return;
     const rect = intentChipRef.current.getBoundingClientRect();
-    setIntentTooltipStyle({
+    const TOOLTIP_ESTIMATED_HEIGHT = 420;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const showAbove = spaceBelow < TOOLTIP_ESTIMATED_HEIGHT + 12;
+    setIntentTooltipStyle(showAbove ? {
+      position: 'fixed',
+      bottom: window.innerHeight - rect.top + 8,
+      left: rect.left,
+      zIndex: 9999,
+    } : {
       position: 'fixed',
       top: rect.bottom + 8,
       left: rect.left,
