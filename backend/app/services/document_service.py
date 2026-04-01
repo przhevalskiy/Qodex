@@ -34,6 +34,9 @@ class DocumentService:
         # Instructor → document_ids index for entity-first retrieval
         self.instructor_index: Dict[str, List[str]] = {}
         self._build_instructor_index()
+        # Course → document_ids index for course-first retrieval
+        self.course_index: Dict[str, List[str]] = {}
+        self._build_course_index()
 
     # =========================================================================
     # Document registry persistence
@@ -119,6 +122,27 @@ class DocumentService:
             logger.info(f"Built instructor index: {len(self.instructor_index)} instructors, "
                        f"{sum(len(docs) for docs in self.instructor_index.values())} documents")
 
+    def _build_course_index(self) -> None:
+        """Build reverse index: normalised course title → list of document IDs."""
+        self.course_index = {}
+        for doc in self._documents.values():
+            name = doc.course_name.strip()
+            if not name:
+                continue
+            key = name.lower().replace("&", "and")
+            key = re.sub(r"\s+", " ", key).strip()
+            self.course_index.setdefault(key, []).append(doc.id)
+
+        if self.course_index:
+            logger.info(f"Built course index: {len(self.course_index)} courses, "
+                       f"{sum(len(docs) for docs in self.course_index.values())} documents")
+
+    def get_documents_by_course(self, course_name: str) -> Optional[List[str]]:
+        """Get document IDs for a given course title (case-insensitive, exact match only)."""
+        key = course_name.lower().replace("&", "and")
+        key = re.sub(r"\s+", " ", key).strip()
+        return self.course_index.get(key)
+
     def get_documents_by_instructor(self, instructor_name: str) -> Optional[List[str]]:
         """Get document IDs for a given instructor name (case-insensitive, exact match only).
 
@@ -159,16 +183,21 @@ class DocumentService:
                 doc_id = vid  # fallback: treat full ID as document
             doc_chunks.setdefault(doc_id, []).append(vid)
 
-        # Step 3: Skip documents we already know about
+        # Step 3: Identify new docs and existing docs missing course_name
         new_doc_ids = [did for did in doc_chunks if did not in self._documents]
-        if not new_doc_ids:
-            logger.info("Registry already contains all Pinecone documents")
+        backfill_doc_ids = [
+            did for did, doc in self._documents.items()
+            if not doc.course_name and did in doc_chunks
+        ]
+
+        if not new_doc_ids and not backfill_doc_ids:
+            logger.info("Registry already contains all Pinecone documents with course_name populated")
             return 0
 
-        # Step 4: Fetch one representative vector per new document to get metadata
+        # Step 4: Fetch one representative vector per new/backfill document to get metadata
         discovered = 0
-        # Batch fetch in groups of 100 (Pinecone limit)
-        representative_ids = [doc_chunks[did][0] for did in new_doc_ids]
+        needs_fetch_ids = new_doc_ids + backfill_doc_ids
+        representative_ids = [doc_chunks[did][0] for did in needs_fetch_ids]
         for i in range(0, len(representative_ids), 100):
             batch = representative_ids[i : i + 100]
             try:
@@ -184,7 +213,9 @@ class DocumentService:
                 doc_id = parts[0] if (len(parts) == 2 and parts[1].isdigit()) else vid
 
                 if doc_id in self._documents:
-                    continue  # already known
+                    # Backfill course_name on existing doc
+                    self._documents[doc_id].course_name = metadata.get("course_name", "")
+                    continue
 
                 chunk_ids = sorted(doc_chunks.get(doc_id, []))
                 doc = Document(
@@ -195,6 +226,7 @@ class DocumentService:
                     chunk_count=len(chunk_ids),
                     chunk_ids=chunk_ids,
                     is_embedded=True,
+                    course_name=metadata.get("course_name", ""),
                 )
                 self._documents[doc_id] = doc
                 discovered += 1
@@ -205,6 +237,8 @@ class DocumentService:
         else:
             logger.info("No new documents discovered during bootstrap")
 
+        self._build_instructor_index()
+        self._build_course_index()
         return discovered
 
     # =========================================================================
@@ -563,6 +597,28 @@ class DocumentService:
             text += paragraph.text + "\n"
         return text
 
+    def _extract_first_page_text(self, content: bytes, filename: str) -> str:
+        """Return raw text from page 0 of a PDF (or first 1000 chars for DOCX/text).
+
+        Intentionally skips the line-joining cleanup in _extract_text_from_pdf so
+        that titles are in their natural joined/CamelCase form, which is easier to
+        split cleanly than post-chunked, defragmented text.
+        """
+        if filename.endswith(".pdf"):
+            try:
+                reader = PdfReader(io.BytesIO(content))
+                if reader.pages:
+                    return reader.pages[0].extract_text() or ""
+            except Exception:
+                pass
+            return ""
+        # For DOCX / plain text, use the full extracted text truncated to first page equivalent
+        try:
+            full = self._extract_text(content, "", filename)
+            return full[:1500]
+        except Exception:
+            return ""
+
     def _extract_text(self, content: bytes, content_type: str, filename: str) -> str:
         """Extract text from document based on type."""
         if content_type == "application/pdf" or filename.endswith(".pdf"):
@@ -611,13 +667,10 @@ class DocumentService:
         chunk_contents = [c["content"] for c in chunks]
         embeddings = await self.pinecone.create_embeddings_batch(chunk_contents)
 
-        # Extract course title from first chunk for metadata tagging.
+        # Extract course title from chunk content for metadata tagging.
         # Stored on every chunk so Pinecone metadata filters can scope
         # retrieval to a specific course at query time.
-        course_name = extract_course_title_from_content(
-            [c["content"] for c in chunks[:1]],
-            filename=filename,
-        ) or ""
+        course_name = extract_course_title_from_content(chunk_contents, filename=filename) or ""
 
         # Prepare vectors for Pinecone with structure metadata
         vectors = []
@@ -646,8 +699,11 @@ class DocumentService:
         document.is_embedded = True
 
         # Store document and persist registry
+        document.course_name = course_name
         self._documents[doc_id] = document
         self._save_registry()
+        self._build_instructor_index()
+        self._build_course_index()
 
         return document
 

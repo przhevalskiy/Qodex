@@ -32,6 +32,7 @@ class Document(DocumentBase):
     file_size: int = 0
     created_at: datetime = Field(default_factory=datetime.utcnow)
     is_embedded: bool = False
+    course_name: str = ""
 
     class Config:
         from_attributes = True
