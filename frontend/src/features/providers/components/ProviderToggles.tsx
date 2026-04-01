@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Check, Wand2, Flame, Feather } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { ChevronDown, Check, Rocket, Flame, Feather } from 'lucide-react';
 import { useProviderStore } from '../store';
 import { ProviderName } from '@/shared/types';
 import './ProviderToggles.css';
@@ -9,10 +9,21 @@ interface ProviderTogglesProps {
   onProviderChange?: (name: ProviderName) => void;
 }
 
+const PROVIDER_DESCRIPTIONS: Record<string, string> = {
+  auto: 'Picks the best model for your query automatically.',
+  mistral: 'Fast and efficient — great for quick lookups and summaries.',
+  claude: 'Precise and thorough — best for deep analysis and writing.',
+};
+
+const TOOLTIP_WIDTH = 260;
+
 export function ProviderToggles({ selectedProvider, onProviderChange }: ProviderTogglesProps = {}) {
   const { providers, activeProvider, setActiveProvider } = useProviderStore();
   const [open, setOpen] = useState(false);
+  const [hoveredOption, setHoveredOption] = useState<string | null>(null);
+  const [tooltipSide, setTooltipSide] = useState<'right' | 'left'>('right');
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const currentProvider = selectedProvider || activeProvider;
   const handleProviderChange = onProviderChange || setActiveProvider;
@@ -20,11 +31,18 @@ export function ProviderToggles({ selectedProvider, onProviderChange }: Provider
   const displayName = currentProvider === 'auto' ? 'Auto' : (activeProviderObj?.display_name ?? 'Model');
 
   const providerIcon = (name: string) => {
-    if (name === 'auto') return <Wand2 size={13} strokeWidth={2} />;
+    if (name === 'auto') return <Rocket size={13} strokeWidth={2} />;
     if (name === 'mistral') return <Flame size={13} strokeWidth={2} />;
     if (name === 'claude') return <Feather size={13} strokeWidth={2} />;
     return null;
   };
+
+  const checkTooltipSide = useCallback(() => {
+    if (!dropdownRef.current) return;
+    const rect = dropdownRef.current.getBoundingClientRect();
+    const spaceRight = window.innerWidth - rect.right;
+    setTooltipSide(spaceRight >= TOOLTIP_WIDTH + 12 ? 'right' : 'left');
+  }, []);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -36,34 +54,43 @@ export function ProviderToggles({ selectedProvider, onProviderChange }: Provider
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  useEffect(() => {
+    if (open) checkTooltipSide();
+  }, [open, checkTooltipSide]);
+
+  const renderOption = (name: string, label: string, isActive: boolean, disabled = false) => (
+    <div
+      key={name}
+      className="provider-inline-option-wrapper"
+      onMouseEnter={() => setHoveredOption(name)}
+      onMouseLeave={() => setHoveredOption(null)}
+    >
+      <button
+        type="button"
+        className={`provider-inline-option ${isActive ? 'active' : ''}`}
+        onClick={() => { handleProviderChange(name as ProviderName); setOpen(false); }}
+        disabled={disabled}
+      >
+        <span className="provider-inline-option-label">{providerIcon(name)}<span>{label}</span></span>
+        {isActive && <Check size={13} strokeWidth={2.5} />}
+      </button>
+      {hoveredOption === name && PROVIDER_DESCRIPTIONS[name] && (
+        <div className={`provider-inline-tooltip provider-inline-tooltip--${tooltipSide}`}>
+          {PROVIDER_DESCRIPTIONS[name]}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="provider-inline" ref={wrapperRef}>
       {open && (
-        <div className="provider-inline-dropdown">
-          <button
-            type="button"
-            className={`provider-inline-option ${currentProvider === 'auto' ? 'active' : ''}`}
-            onClick={() => { handleProviderChange('auto'); setOpen(false); }}
-          >
-            <span className="provider-inline-option-label">{providerIcon('auto')}<span>Auto</span></span>
-            {currentProvider === 'auto' && <Check size={13} strokeWidth={2.5} />}
-          </button>
+        <div className="provider-inline-dropdown" ref={dropdownRef}>
+          {renderOption('auto', 'Auto', currentProvider === 'auto')}
           <div className="provider-inline-divider" />
-          {providers.map((provider) => {
-            const isActive = provider.name === currentProvider;
-            return (
-              <button
-                type="button"
-                key={provider.name}
-                className={`provider-inline-option ${isActive ? 'active' : ''}`}
-                onClick={() => { handleProviderChange(provider.name); setOpen(false); }}
-                disabled={!provider.configured}
-              >
-                <span className="provider-inline-option-label">{providerIcon(provider.name)}<span>{provider.display_name}</span></span>
-                {isActive && <Check size={13} strokeWidth={2.5} />}
-              </button>
-            );
-          })}
+          {providers.map((provider) =>
+            renderOption(provider.name, provider.display_name, provider.name === currentProvider, !provider.configured)
+          )}
         </div>
       )}
 
@@ -73,7 +100,6 @@ export function ProviderToggles({ selectedProvider, onProviderChange }: Provider
         onClick={() => setOpen(o => !o)}
         title="Switch AI model"
       >
-        {providerIcon(currentProvider)}
         <span>{displayName}</span>
         <ChevronDown size={13} strokeWidth={2.5} className={`provider-chevron ${open ? 'flipped' : ''}`} />
       </button>
