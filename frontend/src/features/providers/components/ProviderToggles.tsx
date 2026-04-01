@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Check } from 'lucide-react';
+import { ChevronDown, Check, Wand2, Flame, Feather } from 'lucide-react';
 import { useProviderStore } from '../store';
 import { ProviderName } from '@/shared/types';
 import './ProviderToggles.css';
@@ -18,6 +18,13 @@ export function ProviderToggles({ selectedProvider, onProviderChange }: Provider
   const handleProviderChange = onProviderChange || setActiveProvider;
   const activeProviderObj = providers.find(p => p.name === currentProvider);
   const displayName = currentProvider === 'auto' ? 'Auto' : (activeProviderObj?.display_name ?? 'Model');
+
+  const providerIcon = (name: string) => {
+    if (name === 'auto') return <Wand2 size={13} strokeWidth={2} />;
+    if (name === 'mistral') return <Flame size={13} strokeWidth={2} />;
+    if (name === 'claude') return <Feather size={13} strokeWidth={2} />;
+    return null;
+  };
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -38,7 +45,7 @@ export function ProviderToggles({ selectedProvider, onProviderChange }: Provider
             className={`provider-inline-option ${currentProvider === 'auto' ? 'active' : ''}`}
             onClick={() => { handleProviderChange('auto'); setOpen(false); }}
           >
-            <span>Auto</span>
+            <span className="provider-inline-option-label">{providerIcon('auto')}<span>Auto</span></span>
             {currentProvider === 'auto' && <Check size={13} strokeWidth={2.5} />}
           </button>
           <div className="provider-inline-divider" />
@@ -52,7 +59,7 @@ export function ProviderToggles({ selectedProvider, onProviderChange }: Provider
                 onClick={() => { handleProviderChange(provider.name); setOpen(false); }}
                 disabled={!provider.configured}
               >
-                <span>{provider.display_name}</span>
+                <span className="provider-inline-option-label">{providerIcon(provider.name)}<span>{provider.display_name}</span></span>
                 {isActive && <Check size={13} strokeWidth={2.5} />}
               </button>
             );
@@ -66,6 +73,7 @@ export function ProviderToggles({ selectedProvider, onProviderChange }: Provider
         onClick={() => setOpen(o => !o)}
         title="Switch AI model"
       >
+        {providerIcon(currentProvider)}
         <span>{displayName}</span>
         <ChevronDown size={13} strokeWidth={2.5} className={`provider-chevron ${open ? 'flipped' : ''}`} />
       </button>

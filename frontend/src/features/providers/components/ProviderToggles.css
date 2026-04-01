@@ -80,6 +80,12 @@
   cursor: not-allowed;
 }
 
+.provider-inline-option-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
 .provider-inline-divider {
   height: 1px;
   background-color: var(--gray-100);
