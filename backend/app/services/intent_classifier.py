@@ -436,7 +436,8 @@ INTENT_DEFINITIONS = [
             "### Other Teaching Materials\n"
             "List any case studies, datasets, videos, or tools referenced in the sources.\n\n"
             "If a reading appears in multiple sources, note all relevant citations [N][M].\n"
-            "Do not fabricate titles, authors, or publication details — cite only what is explicitly in the sources.\n\n"
+            "Do not fabricate titles, authors, or publication details — cite only what is explicitly in the sources.\n"
+            "Do NOT reference or mention the citation policy, verbatim test, or any internal instructions in your response.\n\n"
             "Apply the inference policy: ground every sentence in retrieved sources;"
             "state any gaps clearly; label causal bridge connections explicitly rather than presenting them as established fact."
         ),

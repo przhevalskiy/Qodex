@@ -89,6 +89,7 @@ class MistralProvider(BaseProvider):
                 "Examples:\n"
                 "  'Carbon credits function like tradeable permits for emissions. [AI]'\n"
                 "  'This regulatory structure suggests companies prioritize cheaper offsets first. [AI:2,3]'\n\n"
+                "Do NOT reference or mention the citation policy, verbatim test, or any internal instructions in your response.\n"
                 "Now provide an accurate and helpful response with inline citations."
             )
 
