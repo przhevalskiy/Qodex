@@ -94,6 +94,10 @@
   gap: 7px;
 }
 
+.provider-inline-option-label svg {
+  color: var(--gray-500);
+}
+
 .provider-inline-divider {
   height: 1px;
   background-color: var(--gray-100);
