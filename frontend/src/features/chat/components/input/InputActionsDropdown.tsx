@@ -163,8 +163,6 @@ export function InputActionsDropdown() {
             <div className="input-actions-divider" />
 
             {/* Research mode section */}
-            <div className="input-actions-section-label">Research Depth</div>
-
             {modes.map((mode) => {
               const config = RESEARCH_MODE_UI[mode.mode];
               const Icon = config.icon;
