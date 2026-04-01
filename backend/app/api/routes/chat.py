@@ -187,43 +187,27 @@ def _extract_person_names(query: str) -> List[str]:
     return list(found_names)
 
 
-def _extract_course_name(query: str) -> Optional[str]:
-    """Extract a specific course title from a query if one is referenced.
+def _extract_course_names(query: str) -> Optional[str]:
+    """Detect a course title in the query by sliding n-gram windows against
+    the course_index. Mirrors _extract_person_names().
 
-    Looks for patterns like:
-    - "find <Course Title> and prepare/help/summarize/..."
-    - "prepare me for <Course Title> week/class/session"
-
-    The task-verb anchor prevents matching the first incidental "and" inside
-    the course title itself (e.g. "Global Institutions and the Architecture...").
-
-    Returns the extracted course title string, or None if no specific course
-    is detected.  The title is returned in its original casing.
+    Returns the normalised course_index key (lowercase, & → and), or None.
     """
-    task_verbs = r'(?:prepare|help|tell|show|explain|give|summarize|map|create|find|get)'
+    doc_service = get_document_service()
+    course_index = doc_service.course_index
+    if not course_index:
+        return None
 
-    # Pattern: "find <Title> and <task-verb>" — anchors on the task verb so the
-    # greedy match captures the full title including any "and" within it.
-    m = re.search(
-        r'\bfind\s+(.+?)\s+and\s+' + task_verbs + r'\b',
-        query, re.IGNORECASE
-    )
-    if m:
-        candidate = m.group(1).strip()
-        words = candidate.split()
-        if len(words) >= 3 and words[0][0].isupper():
-            return candidate
+    tokens = re.findall(r"[a-zA-Z0-9&]+", query)
+    if len(tokens) < 2:
+        return None
 
-    # Pattern: "for <Title> week|class|course|session"
-    m = re.search(
-        r'\bfor\s+([A-Z][^,\.?!]+?)\s+(?:week|class|course|session)\b',
-        query, re.IGNORECASE
-    )
-    if m:
-        candidate = m.group(1).strip()
-        if len(candidate.split()) >= 3:
-            return candidate
-
+    for size in range(min(6, len(tokens)), 1, -1):
+        for i in range(len(tokens) - size + 1):
+            ngram = " ".join(tokens[i:i+size]).lower().replace("&", "and")
+            ngram = re.sub(r"\s+", " ", ngram).strip()
+            if ngram in course_index:
+                return ngram
     return None
 
 
@@ -563,6 +547,17 @@ async def stream_chat(
             else:
                 logger.debug(f"No person names detected in query: {search_query}")
 
+        if not search_doc_ids:
+            detected_course = _extract_course_names(search_query)
+            if detected_course:
+                course_docs = doc_service.get_documents_by_course(detected_course)
+                if course_docs:
+                    logger.info(f"Course-filtered search: detected '{detected_course}', "
+                               f"restricting to {len(course_docs)} docs")
+                    search_doc_ids = course_docs
+                else:
+                    logger.debug(f"Course '{detected_course}' matched index key but no docs found")
+
         # Over-fetch from Pinecone so entity-boosted re-ranking has enough
         # candidates.  Entity-name queries ("bruce usher") score low
         # semantically; retrieving more chunks increases the chance the
@@ -711,7 +706,7 @@ async def stream_chat(
                 # course but none of the retrieved chunks contain that course title,
                 # the course isn't in the dataset.  Surface this explicitly rather
                 # than silently synthesizing from unrelated material.
-                detected_course = _extract_course_name(request.message)
+                detected_course = _extract_course_names(search_query)
                 course_not_found_response = None
                 if detected_course and not _course_found_in_chunks(detected_course, sorted_groups):
                     course_not_found_response = detected_course
