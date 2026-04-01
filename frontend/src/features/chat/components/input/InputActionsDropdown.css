@@ -129,13 +129,13 @@
 }
 
 .input-actions-item-label {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--gray-900);
 }
 
 .input-actions-item-desc {
-  font-size: 12px;
+  font-size: 11.5px;
   color: var(--gray-500);
 }
 
