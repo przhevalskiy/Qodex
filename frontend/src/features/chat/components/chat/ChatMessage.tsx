@@ -3,6 +3,7 @@ import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import 'flowtoken/dist/styles.css';
 import { Copy, Check, Download, Loader2, RotateCcw } from 'lucide-react';
+import { RESEARCH_MODE_UI } from '@/features/research';
 import ExportDropdown from '../ui/ExportDropdown';
 import { getAvatarIcon } from '@/shared/constants/avatarIcons';
 import { Message, DocumentSource } from '@/shared/types';
@@ -192,6 +193,7 @@ const intentDescriptions: Record<string, string> = {
   find_readings: 'Surfaces required and supplementary readings directly from retrieved syllabi. Does not fabricate titles or authors.',
 };
 
+
 const allIntents = [
   { key: 'generalist', label: 'Generalist', desc: 'Cited answers, adaptive depth' },
   { key: 'summarize', label: 'Summary', desc: 'Key findings, minimal inference' },
@@ -296,6 +298,9 @@ export const ChatMessage = memo(function ChatMessage({ message, isStreaming, onR
   const [showIntentTooltip, setShowIntentTooltip] = useState(false);
   const [intentTooltipStyle, setIntentTooltipStyle] = useState<React.CSSProperties>({});
   const intentChipRef = useRef<HTMLSpanElement>(null);
+  const [showResearchTooltip, setShowResearchTooltip] = useState(false);
+  const [researchTooltipStyle, setResearchTooltipStyle] = useState<React.CSSProperties>({});
+  const researchChipRef = useRef<HTMLSpanElement>(null);
 
   const handleIntentMouseEnter = useCallback(() => {
     if (!intentChipRef.current) return;
@@ -319,6 +324,30 @@ export const ChatMessage = memo(function ChatMessage({ message, isStreaming, onR
 
   const handleIntentMouseLeave = useCallback(() => {
     setShowIntentTooltip(false);
+  }, []);
+
+  const handleResearchMouseEnter = useCallback(() => {
+    if (!researchChipRef.current) return;
+    const rect = researchChipRef.current.getBoundingClientRect();
+    const TOOLTIP_ESTIMATED_HEIGHT = 180;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const showAbove = spaceBelow < TOOLTIP_ESTIMATED_HEIGHT + 12;
+    setResearchTooltipStyle(showAbove ? {
+      position: 'fixed',
+      bottom: window.innerHeight - rect.top + 8,
+      left: rect.left,
+      zIndex: 9999,
+    } : {
+      position: 'fixed',
+      top: rect.bottom + 8,
+      left: rect.left,
+      zIndex: 9999,
+    });
+    setShowResearchTooltip(true);
+  }, []);
+
+  const handleResearchMouseLeave = useCallback(() => {
+    setShowResearchTooltip(false);
   }, []);
 
   // Skip expensive emoji processing during streaming — AnimatedMarkdown uses raw content
@@ -429,6 +458,29 @@ export const ChatMessage = memo(function ChatMessage({ message, isStreaming, onR
               )}
             </span>
           )}
+          {!isUser && message.research_mode && RESEARCH_MODE_UI[message.research_mode] && (() => {
+            const ui = RESEARCH_MODE_UI[message.research_mode!];
+            const Icon = ui.icon;
+            return (
+              <span
+                ref={researchChipRef}
+                className="research-chip-wrapper"
+                onMouseEnter={handleResearchMouseEnter}
+                onMouseLeave={handleResearchMouseLeave}
+              >
+                <span className="message-research-chip">
+                  <Icon size={14} />
+                </span>
+                {showResearchTooltip && createPortal(
+                  <div className="research-chip-tooltip" style={researchTooltipStyle}>
+                    <span className="research-chip-tooltip-label"><Icon size={12} />{ui.label}</span>
+                    <span className="research-chip-tooltip-desc">{ui.description}</span>
+                  </div>,
+                  document.body
+                )}
+              </span>
+            );
+          })()}
           {message.response_time_ms && (
             <span className="message-time">
               {(message.response_time_ms / 1000).toFixed(1)}s
