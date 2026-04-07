@@ -32,8 +32,8 @@ class ResearchModeConfig:
 RESEARCH_MODE_DEFINITIONS: Dict[ResearchMode, ResearchModeConfig] = {
     ResearchMode.QUICK: ResearchModeConfig(
         mode=ResearchMode.QUICK,
-        label="Quick",
-        description="Focused search across your most relevant sources",
+        label="Focused",
+        description="Searches for the most directly relevant sources",
         top_k=7,
         min_score=0.40,
         prompt_enhancement=(
@@ -47,8 +47,8 @@ RESEARCH_MODE_DEFINITIONS: Dict[ResearchMode, ResearchModeConfig] = {
     ),
     ResearchMode.ENHANCED: ResearchModeConfig(
         mode=ResearchMode.ENHANCED,
-        label="Enhanced",
-        description="Broader search to find and connect more sources",
+        label="Broad",
+        description="Wider search including adjacent and related sources",
         top_k=12,
         min_score=0.30,
         prompt_enhancement=(
@@ -67,9 +67,9 @@ RESEARCH_MODE_DEFINITIONS: Dict[ResearchMode, ResearchModeConfig] = {
     ),
     ResearchMode.DEEP: ResearchModeConfig(
         mode=ResearchMode.DEEP,
-        label="Deep Research",
-        description="Widest net for the most thorough, exhaustive analysis",
-        top_k=16,
+        label="Exploratory",
+        description="Widest search for open-ended discovery and analysis",
+        top_k=20,
         min_score=0.25,
         prompt_enhancement=(
             "\n\nProvide an exhaustive, scholarly-level response. This should read like a "

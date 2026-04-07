@@ -687,13 +687,12 @@ async def stream_chat(
                     else:
                         del doc_groups[doc_id]
 
-            # Cap to research_config.top_k documents (over-fetch was for
-            # casting a wider net; now trim back to the requested depth).
+            # Cap to research_config.top_k documents (ceiling from research mode).
             sorted_groups = sorted(
                 doc_groups.items(),
                 key=lambda item: item[1]["best_score"],
                 reverse=True,
-            )[:research_config.top_k]
+            )[:research_config.top_k]  # top_k=20 for all modes; dynamic chunk cap handles per-doc depth
 
             # Build context and sources from deduplicated groups
             context_parts = []
