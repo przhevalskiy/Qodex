@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Loader2, Lock } from 'lucide-react';
+import { Loader2, Lock, HardDriveDownload, Check } from 'lucide-react';
 import { useDiscussionStore } from '@/features/discussions';
 import { ChatMessage } from '@/features/chat/components/chat/ChatMessage';
 import { Discussion } from '@/shared/types';
+import { api } from '@/shared/services/api';
 import './SharedChatPage.css';
 
 /**
@@ -19,10 +20,27 @@ import './SharedChatPage.css';
 export function SharedChatPage() {
   const { discussionId } = useParams<{ discussionId: string }>();
   const navigate = useNavigate();
-  const { loadSharedDiscussion } = useDiscussionStore();
+  const { loadSharedDiscussion, createDiscussion } = useDiscussionStore();
   const [discussion, setDiscussion] = useState<Discussion | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const handleSaveChat = async () => {
+    if (!discussion || isSaving || saved) return;
+    setIsSaving(true);
+    try {
+      const newDiscussion = await createDiscussion({ title: discussion.title });
+      for (const msg of discussion.messages) {
+        await api.addMessage(newDiscussion.id, msg.content, msg.role, msg.provider ?? undefined);
+      }
+      setSaved(true);
+      setTimeout(() => navigate(`/chat/${newDiscussion.id}`), 800);
+    } catch {
+      setIsSaving(false);
+    }
+  };
 
   useEffect(() => {
     if (!discussionId) {
@@ -70,6 +88,19 @@ export function SharedChatPage() {
       <div className="shared-page-header">
         <h1 className="shared-page-title">{discussion.title}</h1>
         <span className="shared-page-badge">Read-only</span>
+        <button
+          className={`shared-page-save ${saved ? 'saved' : ''}`}
+          onClick={handleSaveChat}
+          disabled={isSaving || saved}
+          title="Save to my chats"
+        >
+          {saved
+            ? <><Check size={14} strokeWidth={2.5} />Saved</>
+            : isSaving
+            ? <><Loader2 size={14} className="shared-page-save-spinner" />Saving…</>
+            : <><HardDriveDownload size={14} strokeWidth={2} />Save Chat</>
+          }
+        </button>
       </div>
 
       <div className="shared-page-messages">
