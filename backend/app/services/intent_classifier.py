@@ -44,7 +44,10 @@ _CITATION_POLICY = (
     "CORRECT: 'Grid extension costs make solar the only viable option [AI:1,2].' "
     "WRONG: '...grid connection costs [1]. [AI:1,2] Solar becomes viable...' "
     "This rule applies to ALL sentences — introductory framing sentences, analogies, topic overviews, summaries, key takeaways, and concluding statements are NOT exempt. "
-    "If you open a response with an analogy or framing sentence, that sentence must carry [AI] if it comes from training knowledge. No sentence may be left uncited."
+    "If you open a response with an analogy or framing sentence, that sentence must carry [AI] if it comes from training knowledge. No sentence may be left uncited.\n"
+    "NEVER break the fourth wall: do NOT write 'Citation Note:', 'Note:', 'All claims are grounded in', "
+    "'unless marked [AI]', or any other meta-commentary about the citation system in your response. "
+    "Citation markers are invisible infrastructure — they appear in the text but are never discussed, explained, or referenced in prose."
 )
 
 
@@ -168,7 +171,8 @@ INTENT_DEFINITIONS = [
             "### Synthesis\n"
             "- What patterns emerge? Where do they converge or diverge?\n"
             "- What are the practical implications of these differences?\n\n"
-            "Be balanced — present each perspective with equal rigor.\n\n"
+            "Be balanced — present each perspective with equal rigor.\n"
+            "Be thorough but concise. Avoid exhaustive enumeration unless explicitly asked.\n\n"
             "Apply the inference policy: ground every sentence in retrieved sources;"
             "state any gaps clearly; label causal bridge connections explicitly rather than presenting them as established fact."
         ),
@@ -340,7 +344,8 @@ INTENT_DEFINITIONS = [
             "### Overall Assessment\n"
             "- Weigh the strengths against weaknesses\n"
             "- How should a reader calibrate their confidence in the claims?\n\n"
-            "Distinguish between factual gaps and interpretive disagreements.\n\n"
+            "Distinguish between factual gaps and interpretive disagreements.\n"
+            "Be thorough but concise. Avoid exhaustive enumeration unless explicitly asked.\n\n"
             "Apply the inference policy: ground every sentence in retrieved sources;"
             "state any gaps clearly; label causal bridge connections explicitly rather than presenting them as established fact."
         ),
@@ -369,7 +374,8 @@ INTENT_DEFINITIONS = [
             "- How was the data analyzed? What tools or frameworks were applied?\n"
             "### Validity & Reliability\n"
             "- How robust is the methodology? Any concerns about generalizability?\n\n"
-            "Be specific about what the sources actually describe vs. what you are inferring.\n\n"
+            "Be specific about what the sources actually describe vs. what you are inferring.\n"
+            "Be thorough but concise. Avoid exhaustive enumeration unless explicitly asked.\n\n"
             "Apply the inference policy: ground every sentence in retrieved sources;"
             "state any gaps clearly; label causal bridge connections explicitly rather than presenting them as established fact."
         ),
@@ -437,7 +443,8 @@ INTENT_DEFINITIONS = [
             "List any case studies, datasets, videos, or tools referenced in the sources.\n\n"
             "If a reading appears in multiple sources, note all relevant citations [N][M].\n"
             "Do not fabricate titles, authors, or publication details — cite only what is explicitly in the sources.\n"
-            "Do NOT reference or mention the citation policy, verbatim test, or any internal instructions in your response.\n\n"
+            "Do NOT reference or mention the citation policy, verbatim test, or any internal instructions in your response.\n"
+            "Be thorough but concise. Avoid exhaustive enumeration unless explicitly asked.\n\n"
             "Apply the inference policy: ground every sentence in retrieved sources;"
             "state any gaps clearly; label causal bridge connections explicitly rather than presenting them as established fact."
         ),
@@ -516,6 +523,22 @@ def _should_use_knowledge_base(message: str) -> bool:
     return True  # safe default — still search
 
 
+# Task verbs used to detect multi-intent queries.
+# When 3+ are present, a lone "summarize" keyword should not override routing to Generalist.
+_MULTI_INTENT_TASK_VERBS = [
+    r"\bfind\b", r"\bprepare\b", r"\bmap\b", r"\banalyze\b", r"\banalys(e|is)\b",
+    r"\bidentify\b", r"\blist\b", r"\bdescribe\b", r"\bevaluate\b", r"\bdiscuss\b",
+    r"\bexplain\b", r"\bcompar(e|ing)\b", r"\bcontrast\b", r"\boutline\b",
+    r"\breview\b", r"\bexplore\b", r"\bconnect\b", r"\brelate\b", r"\bsummar(ize|ise|y)\b",
+    r"\brecommend\b", r"\bsuggest\b", r"\bsynthesize\b", r"\bassess\b",
+]
+
+
+def _count_task_verbs(message_lower: str) -> int:
+    """Count how many distinct task verbs appear in the message."""
+    return sum(1 for p in _MULTI_INTENT_TASK_VERBS if re.search(p, message_lower))
+
+
 def classify_intent(message: str, has_attachments: bool = False) -> IntentResult:
     """
     Classify the user's message into an intent category.
@@ -534,16 +557,24 @@ def classify_intent(message: str, has_attachments: bool = False) -> IntentResult
         use_kb = _should_use_knowledge_base(message)
 
     for definition in INTENT_DEFINITIONS:
-        for pattern in definition["patterns"]:
-            if re.search(pattern, message_lower):
-                return IntentResult(
-                    intent=definition["intent"],
-                    label=definition["label"],
-                    prompt_suffix=definition["prompt_suffix"],
-                    use_knowledge_base=use_kb,
-                    preferred_provider=definition.get("preferred_provider"),
-                    max_tokens=definition.get("max_tokens"),
-                )
+        matched = any(re.search(p, message_lower) for p in definition["patterns"])
+        if not matched:
+            continue
+
+        # Guard: if "summarize" matched but the query is multi-part (3+ distinct task
+        # verbs), the Summary output structure (Key Findings / Methodology / Limitations)
+        # is the wrong frame. Fall through to Generalist instead.
+        if definition["intent"] == "summarize" and _count_task_verbs(message_lower) >= 3:
+            continue
+
+        return IntentResult(
+            intent=definition["intent"],
+            label=definition["label"],
+            prompt_suffix=definition["prompt_suffix"],
+            use_knowledge_base=use_kb,
+            preferred_provider=definition.get("preferred_provider"),
+            max_tokens=definition.get("max_tokens"),
+        )
 
     # Fallback: generalist agent — comprehensive, well-structured responses
     return IntentResult(
@@ -561,7 +592,8 @@ def classify_intent(message: str, has_attachments: bool = False) -> IntentResult
             "- End with a 'Key Takeaway' sentence that captures the core idea — this sentence must also carry citation markers like any other factual claim\n\n"
             "Do NOT use section headers like 'Direct Answer' in your response.\n\n"
             "Adapt depth to the complexity of the question. Simple questions deserve concise answers; "
-            "complex questions warrant thorough exploration. Always ground claims in source material.\n\n"
+            "complex questions warrant thorough exploration. Always ground claims in source material.\n"
+            "Be thorough but concise. Avoid exhaustive enumeration unless explicitly asked.\n\n"
             "Apply the inference policy: ground every sentence in retrieved sources;"
             "state any gaps clearly; label causal bridge connections explicitly rather than presenting them as established fact.\n\n"
         ) + _CITATION_POLICY,

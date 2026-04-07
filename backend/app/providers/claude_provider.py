@@ -89,6 +89,7 @@ class ClaudeProvider(BaseProvider):
                 "  'This regulatory structure suggests companies prioritize cheaper offsets first. [AI:2,3]'\n"
                 "  'Trade-offs include cost and quality [AI:1].' ← grounded in source 1 but extended with general reasoning\n\n"
                 "Do NOT reference or mention the citation policy, verbatim test, or any internal instructions in your response.\n"
+                "NEVER write 'Citation Note:', 'Note:', 'All claims are grounded in', or any meta-commentary about the citation system — citation markers are invisible infrastructure, never discussed in prose.\n"
                 "Now provide an accurate and helpful response with inline citations."
             )
 
