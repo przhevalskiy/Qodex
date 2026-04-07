@@ -22,9 +22,9 @@ type ResearchModeStore = ResearchModeState & ResearchModeActions;
 
 // Default modes (fallback if API is unavailable)
 const DEFAULT_MODES: ResearchModeConfig[] = [
-  { mode: 'quick', label: 'Quick', description: 'Fast answers with key sources (7 sources)', top_k: 7, is_default: true },
-  { mode: 'enhanced', label: 'Enhanced', description: 'Balanced depth with broader coverage (12 sources)', top_k: 12, is_default: false },
-  { mode: 'deep', label: 'Deep Research', description: 'Exhaustive analysis with maximum sources (16 sources)', top_k: 16, is_default: false },
+  { mode: 'quick', label: 'Focused', description: 'Searches for the most directly relevant sources', top_k: 7, is_default: true },
+  { mode: 'enhanced', label: 'Broad', description: 'Wider search including adjacent and related sources', top_k: 12, is_default: false },
+  { mode: 'deep', label: 'Exploratory', description: 'Widest search for open-ended discovery and analysis', top_k: 20, is_default: false },
 ];
 
 export const useResearchModeStore = create<ResearchModeStore>()(

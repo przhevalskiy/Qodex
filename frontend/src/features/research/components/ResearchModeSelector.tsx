@@ -26,9 +26,6 @@ export function ResearchModeSelector({ compact = false }: ResearchModeSelectorPr
           >
             <Icon size={14} />
             <span className="mode-label">{ui.label}</span>
-            {!compact && (
-              <span className="mode-sources">{ui.rangeLabel}</span>
-            )}
           </button>
         );
       })}

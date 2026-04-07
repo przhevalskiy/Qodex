@@ -1,30 +1,26 @@
-import { Zap, Telescope, Atom } from 'lucide-react';
+import { Target, Radar, Compass } from 'lucide-react';
 import type { ResearchMode } from '@/shared/types';
 
 export interface ResearchModeUIConfig {
-  icon: typeof Zap;
+  icon: typeof Target;
   label: string;
   description: string;
-  rangeLabel: string;
 }
 
 export const RESEARCH_MODE_UI: Record<ResearchMode, ResearchModeUIConfig> = {
   quick: {
-    icon: Zap,
-    label: 'Quick',
+    icon: Target,
+    label: 'Focused',
     description: 'Searches for most relevant sources',
-    rangeLabel: 'up to 7',
   },
   enhanced: {
-    icon: Telescope,
-    label: 'Enhanced',
+    icon: Radar,
+    label: 'Broad',
     description: 'Broader search across more sources',
-    rangeLabel: 'up to 12',
   },
   deep: {
-    icon: Atom,
-    label: 'Deep Research',
+    icon: Compass,
+    label: 'Exploratory',
     description: 'Widest search for exhaustive analysis',
-    rangeLabel: 'up to 16',
   },
 };
