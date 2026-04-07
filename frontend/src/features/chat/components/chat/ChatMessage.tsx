@@ -1,5 +1,6 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
 import 'flowtoken/dist/styles.css';
 import { Copy, Check, Download, Loader2, RotateCcw } from 'lucide-react';
 import ExportDropdown from '../ui/ExportDropdown';
@@ -284,7 +285,7 @@ const markdownComponents = {
   },
 };
 
-const remarkPlugins = [remarkGfm, remarkCitations];
+const remarkPlugins = [remarkGfm, remarkBreaks, remarkCitations];
 
 export const ChatMessage = memo(function ChatMessage({ message, isStreaming, onRetry, onQuestionClick, onContinue }: ChatMessageProps) {
   const isUser = message.role === 'user';
