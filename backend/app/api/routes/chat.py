@@ -38,6 +38,14 @@ _MIN_SCORE = 0.40
 # Matches bullet symbols, course-code prefixes (L1, L2 …), page markers, etc.
 _ARTIFACT_RE = re.compile(r'[●•▪▸◦·]\s*|^\s*[A-Z]\d+\s+', re.MULTILINE)
 
+# Pronouns and implicit references that require conversation context to resolve.
+# Only rewrite the search query when one of these is present — self-contained
+# queries skip the rewrite LLM call entirely, saving 300-600ms on the critical path.
+_REWRITE_TRIGGERS = re.compile(
+    r'\b(it|they|them|their|those|these|that|this|he|she|his|her|the same|the ones?)\b',
+    re.IGNORECASE,
+)
+
 
 def _make_chunk_preview(text: str, max_len: int = 200) -> str:
     """Return a clean, sentence-complete preview of a raw chunk string."""
@@ -523,9 +531,14 @@ async def stream_chat(
 
     # Rewrite the follow-up query so Pinecone retrieves documents relevant
     # to the conversational context (resolves pronouns, implicit refs).
-    search_query = await _rewrite_search_query(
-        request.message, context_messages, settings
-    )
+    # Skip the rewrite LLM call entirely for self-contained queries — saves
+    # 300-600ms on the critical path when no pronoun resolution is needed.
+    if _REWRITE_TRIGGERS.search(request.message):
+        search_query = await _rewrite_search_query(
+            request.message, context_messages, settings
+        )
+    else:
+        search_query = request.message
 
     # Start RAG search in parallel with provider setup — but only when the
     # intent classifier says the knowledge base is needed.
