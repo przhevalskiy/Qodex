@@ -1,6 +1,9 @@
 from typing import AsyncGenerator, List, Optional, Dict
 from mistralai import Mistral
 import json
+import os
+
+from anthropic import AsyncAnthropic
 
 from app.models.message import Message
 from .base import BaseProvider, ProviderRegistry
@@ -195,7 +198,48 @@ Guidelines:
             return []
 
         except Exception as e:
-            print(f"Failed to generate suggested questions (Mistral): {e}")
+            err_str = str(e)
+            # Mistral capacity exceeded — fall back to Claude Haiku
+            if "429" in err_str or "capacity" in err_str.lower():
+                anthropic_key = os.environ.get("ANTHROPIC_API_KEY")
+                if anthropic_key:
+                    try:
+                        system_prompt = f"""Based on this conversation, suggest {count} relevant follow-up questions the user might ask.
+
+Return ONLY a JSON array of question strings, nothing else.
+Example: ["Question 1?", "Question 2?", "Question 3?"]
+
+Guidelines:
+- Questions should be natural and conversational
+- Focus on clarifying details, exploring related topics, or going deeper
+- Keep questions concise (under 15 words)
+- Make them specific to the conversation context"""
+
+                        haiku_messages = [
+                            *conversation_history[-6:],
+                            {"role": "assistant", "content": last_response},
+                            {"role": "user", "content": "Generate suggested follow-up questions."}
+                        ]
+                        client = AsyncAnthropic(api_key=anthropic_key)
+                        response = await client.messages.create(
+                            model="claude-haiku-4-5-20251001",
+                            system=system_prompt,
+                            messages=haiku_messages,
+                            temperature=0.7,
+                            max_tokens=200,
+                        )
+                        content = response.content[0].text.strip()
+                        if content.startswith('```'):
+                            lines = content.split('\n')
+                            content = '\n'.join(lines[1:-1]) if len(lines) > 2 else content
+                            content = content.replace('```json', '').replace('```', '').strip()
+                        questions = json.loads(content)
+                        if isinstance(questions, list):
+                            return [q for q in questions if isinstance(q, str)][:count]
+                    except Exception as fallback_err:
+                        print(f"Haiku fallback also failed: {fallback_err}")
+            else:
+                print(f"Failed to generate suggested questions (Mistral): {e}")
             return []
 
 
