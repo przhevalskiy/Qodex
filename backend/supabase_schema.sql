@@ -100,6 +100,8 @@ CREATE TABLE IF NOT EXISTS messages (
   suggested_questions JSONB,
   intent TEXT,
   research_mode TEXT,
+  user_display_name TEXT,
+  user_email TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 

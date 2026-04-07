@@ -153,7 +153,13 @@ class DiscussionService:
 
     # ── Messages ─────────────────────────────────────────────────
 
-    def add_message(self, discussion_id: str, message: Message) -> None:
+    def add_message(
+        self,
+        discussion_id: str,
+        message: Message,
+        user_display_name: Optional[str] = None,
+        user_email: Optional[str] = None,
+    ) -> None:
         row = {
             "id": message.id,
             "discussion_id": discussion_id,
@@ -171,6 +177,8 @@ class DiscussionService:
             "suggested_questions": message.suggested_questions,
             "intent": message.intent,
             "research_mode": message.research_mode,
+            "user_display_name": user_display_name,
+            "user_email": user_email,
         }
         self._client.table("messages").insert(row).execute()
 

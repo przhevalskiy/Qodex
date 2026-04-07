@@ -4,7 +4,7 @@ from datetime import datetime
 import uuid
 
 from app.models import Discussion, DiscussionCreate, DiscussionUpdate, Message, MessageCreate
-from app.auth import get_current_user_id
+from app.auth import get_current_user_id, get_current_user, UserContext
 from app.services.discussion_service import get_discussion_service
 
 router = APIRouter(prefix="/api/discussions", tags=["discussions"])
@@ -90,13 +90,13 @@ async def delete_all_discussions(
 async def add_message(
     discussion_id: str,
     data: MessageCreate,
-    user_id: str = Depends(get_current_user_id),
+    current_user: UserContext = Depends(get_current_user),
 ):
     """Add a message to a discussion."""
     service = get_discussion_service()
 
     # Verify discussion belongs to user
-    discussion = service.get_discussion(discussion_id, user_id)
+    discussion = service.get_discussion(discussion_id, current_user.user_id)
     if not discussion:
         raise HTTPException(status_code=404, detail="Discussion not found")
 
@@ -107,12 +107,16 @@ async def add_message(
         provider=data.provider,
         timestamp=datetime.utcnow(),
     )
-    service.add_message(discussion_id, message)
+    service.add_message(
+        discussion_id, message,
+        user_display_name=current_user.display_name if data.role.value == "user" else None,
+        user_email=current_user.email if data.role.value == "user" else None,
+    )
 
     # Auto-generate title from first user message if still default
     if discussion.title == "New Chat" and data.role.value == "user":
         new_title = data.content[:50] + ("..." if len(data.content) > 50 else "")
-        service.update_discussion(discussion_id, user_id, title=new_title)
+        service.update_discussion(discussion_id, current_user.user_id, title=new_title)
 
     return message
 

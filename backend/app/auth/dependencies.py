@@ -1,12 +1,20 @@
 """FastAPI authentication dependencies using Supabase JWT."""
 
 import logging
+from dataclasses import dataclass
 import jwt
 from jwt import PyJWKClient
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.core.config import get_settings
+
+
+@dataclass
+class UserContext:
+    user_id: str
+    email: str
+    display_name: str
 
 logger = logging.getLogger(__name__)
 
@@ -91,3 +99,23 @@ async def get_current_user_id(
         )
 
     return user_id
+
+
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(_bearer_scheme),
+) -> UserContext:
+    """Decode Supabase JWT and return user_id, email, and display_name."""
+    user_id = await get_current_user_id(credentials)
+
+    # Re-decode without verification to extract claims (already verified above)
+    token = credentials.credentials
+    unverified = jwt.decode(token, options={"verify_signature": False})
+
+    email = unverified.get("email") or ""
+    user_metadata = unverified.get("user_metadata") or {}
+    display_name = (
+        user_metadata.get("display_name")
+        or (email.split("@")[0] if email else "")
+    )
+
+    return UserContext(user_id=user_id, email=email, display_name=display_name)
