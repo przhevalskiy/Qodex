@@ -20,10 +20,11 @@ const TOOLTIP_WIDTH = 260;
 export function ProviderToggles({ selectedProvider, onProviderChange }: ProviderTogglesProps = {}) {
   const { providers, activeProvider, setActiveProvider } = useProviderStore();
   const [open, setOpen] = useState(false);
-  const [hoveredOption, setHoveredOption] = useState<string | null>(null);
+  const [visibleTooltip, setVisibleTooltip] = useState<string | null>(null);
   const [tooltipSide, setTooltipSide] = useState<'right' | 'left'>('right');
   const wrapperRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const tooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const currentProvider = selectedProvider || activeProvider;
   const handleProviderChange = onProviderChange || setActiveProvider;
@@ -58,12 +59,22 @@ export function ProviderToggles({ selectedProvider, onProviderChange }: Provider
     if (open) checkTooltipSide();
   }, [open, checkTooltipSide]);
 
+  const handleOptionMouseEnter = (name: string) => {
+    if (tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current);
+    tooltipTimerRef.current = setTimeout(() => setVisibleTooltip(name), 300);
+  };
+
+  const handleOptionMouseLeave = () => {
+    if (tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current);
+    setVisibleTooltip(null);
+  };
+
   const renderOption = (name: string, label: string, isActive: boolean, disabled = false) => (
     <div
       key={name}
       className="provider-inline-option-wrapper"
-      onMouseEnter={() => setHoveredOption(name)}
-      onMouseLeave={() => setHoveredOption(null)}
+      onMouseEnter={() => handleOptionMouseEnter(name)}
+      onMouseLeave={handleOptionMouseLeave}
     >
       <button
         type="button"
@@ -74,7 +85,7 @@ export function ProviderToggles({ selectedProvider, onProviderChange }: Provider
         <span className="provider-inline-option-label">{providerIcon(name)}<span>{label}</span></span>
         {isActive && <Check size={13} strokeWidth={2.5} />}
       </button>
-      {hoveredOption === name && PROVIDER_DESCRIPTIONS[name] && (
+      {visibleTooltip === name && PROVIDER_DESCRIPTIONS[name] && (
         <div className={`provider-inline-tooltip provider-inline-tooltip--${tooltipSide}`}>
           {PROVIDER_DESCRIPTIONS[name]}
         </div>

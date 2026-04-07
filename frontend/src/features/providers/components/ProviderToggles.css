@@ -120,6 +120,7 @@
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
+  animation: providerTooltipFadeIn 0.15s ease-out forwards;
   background: #ffffff;
   border: 1px solid var(--gray-200, #e5e7eb);
   color: var(--gray-600);
@@ -132,6 +133,11 @@
   pointer-events: none;
   z-index: 300;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.10);
+}
+
+@keyframes providerTooltipFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .provider-inline-tooltip--right {
