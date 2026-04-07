@@ -56,7 +56,12 @@ export function ProviderToggles({ selectedProvider, onProviderChange }: Provider
   }, []);
 
   useEffect(() => {
-    if (open) checkTooltipSide();
+    if (open) {
+      checkTooltipSide();
+    } else {
+      setVisibleTooltip(null);
+      if (tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current);
+    }
   }, [open, checkTooltipSide]);
 
   const handleOptionMouseEnter = (name: string) => {
