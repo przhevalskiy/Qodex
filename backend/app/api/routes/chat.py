@@ -24,7 +24,7 @@ from app.services.attachment_service import get_attachment_service
 from app.services.discussion_service import get_discussion_service
 from app.utils.streaming import create_sse_response, format_sse_event
 from app.services.intent_classifier import classify_intent, INTENT_LOOKUP, CONTINUATION_INSTRUCTION
-from app.auth import get_current_user_id
+from app.auth import get_current_user, UserContext
 from app.utils.course_utils import extract_course_title_from_content
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
@@ -202,7 +202,7 @@ def _extract_course_names(query: str) -> Optional[str]:
     if len(tokens) < 2:
         return None
 
-    for size in range(min(6, len(tokens)), 1, -1):
+    for size in range(min(12, len(tokens)), 1, -1):
         for i in range(len(tokens) - size + 1):
             ngram = " ".join(tokens[i:i+size]).lower().replace("&", "and")
             ngram = re.sub(r"\s+", " ", ngram).strip()
@@ -378,7 +378,7 @@ class ChatResponse(BaseModel):
 @router.post("/stream")
 async def stream_chat(
     request: ChatRequest,
-    user_id: str = Depends(get_current_user_id),
+    current_user: UserContext = Depends(get_current_user),
 ):
     """
     Stream a chat response using SSE.
@@ -389,6 +389,7 @@ async def stream_chat(
     disc_service = get_discussion_service()
 
     # Validate discussion exists and belongs to user
+    user_id = current_user.user_id
     discussion = disc_service.get_discussion(request.discussion_id, user_id)
     if not discussion:
         raise HTTPException(status_code=404, detail="Discussion not found")
@@ -424,7 +425,11 @@ async def stream_chat(
         role=MessageRole.USER,
         timestamp=datetime.utcnow()
     )
-    disc_service.add_message(request.discussion_id, user_message)
+    disc_service.add_message(
+        request.discussion_id, user_message,
+        user_display_name=current_user.display_name,
+        user_email=current_user.email,
+    )
 
     # Auto-generate title from first user message if still default
     title_updated = False
@@ -885,9 +890,11 @@ async def stream_chat(
             ]
 
             # Generate questions using the provider
+            # Truncate response to avoid exceeding context limits on large responses
+            truncated_response = full_response_text[:3000] if len(full_response_text) > 3000 else full_response_text
             suggested_questions = await provider.generate_suggested_questions(
                 conversation_history=conversation_history,
-                last_response=full_response_text,
+                last_response=truncated_response,
                 count=4
             )
 
