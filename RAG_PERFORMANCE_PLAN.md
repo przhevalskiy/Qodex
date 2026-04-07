@@ -2,9 +2,30 @@
 
 ## Background
 
-On heavy queries the LLM receives a large assembled context string before generating its first token. Attention cost scales quadratically with context length, so a query that pulls 16 documents — each potentially contributing several chunks — can push the system prompt past 20,000 tokens. The first token latency (TTFT) and inter-token rate both degrade. Three targeted changes address this without degrading answer quality.
+On heavy queries the LLM receives a large assembled context string before generating its first token. Attention cost scales quadratically with context length, so a query that pulls 16 documents — each potentially contributing several chunks — can push the system prompt past 20,000 tokens. The first token latency (TTFT) and inter-token rate both degrade. Four targeted changes address this without degrading answer quality.
 
-The user experience is: **thinking indicator → first token arrives**. The gap between those two is what's felt. Changes 1+2 directly compress that gap by reducing context size. Change 3 is the absolute safety net for edge cases.
+The user experience is: **thinking indicator → first token arrives**. The gap between those two is what's felt. Changes 1+2 directly compress that gap by reducing context size. Change 3 is the absolute safety net. Change 4 retrofits research modes so they do non-redundant, non-conflicting work alongside the rest of the pipeline.
+
+---
+
+## Pipeline Order (how all systems interact)
+
+```
+User selects research mode  → sets min_score threshold only
+Intent classifier fires     → sets base_chunks + max_chunks per document
+Task verb count             → scales chunk cap within intent bounds
+Pinecone fetch              → fixed top_k ceiling (20) × 2 over-fetch
+min_score filter            → research mode owns this stage exclusively
+Entity boost re-ranking     → per-chunk effective_score calculated
+Document deduplication      → by filename, keep highest score group
+Sort by effective_score     → document groups ranked
+Dynamic chunk cap           → intent + verb count applied per document
+Context assembly            → context_parts joined
+Hard cap (Change 3)         → absolute ceiling regardless of all above
+LLM streaming               → smaller context = faster token generation
+```
+
+Each system owns a distinct, non-overlapping stage. No conflicts.
 
 ---
 
@@ -43,7 +64,7 @@ combined_content = "\n\n".join(top_chunks)
 
 ```
 effective_chunk_cap = min(
-    base_chunks_for_intent + (task_verb_count × verb_bonus),
+    base_chunks_for_intent + task_verb_count,
     max_chunks_for_intent
 )
 ```
@@ -87,7 +108,6 @@ _DEFAULT_MAX_CHUNKS = 8
 
 # After intent classification:
 task_verbs = _count_task_verbs(request.message)
-verb_bonus = 1  # one extra chunk per task verb
 
 base = intent_result.base_chunks_per_doc or _DEFAULT_BASE_CHUNKS
 ceiling = intent_result.max_chunks_per_doc or _DEFAULT_MAX_CHUNKS
@@ -112,7 +132,7 @@ effective_chunk_cap = min(base + task_verbs, ceiling)
 
 **File:** `backend/app/api/routes/chat.py`
 
-**Problem:** Even with per-document chunk capping, Deep mode with 16 documents can still assemble a large context string. A hard ceiling is the absolute safety net for edge cases where many documents each contribute several chunks.
+**Problem:** Even with per-document chunk capping, edge cases with many documents each contributing several chunks can still produce a large context string. A hard ceiling is the absolute safety net.
 
 **Change:**
 
@@ -132,9 +152,17 @@ if context_parts:
         logger.info(f"Context truncated to {len(context)} chars")
 ```
 
-28,000 chars (~7,000 tokens) leaves headroom for the system prompt boilerplate (~6,000 tokens), intent/research enhancement (~1,500 tokens), and the response budget within a 16,384-token model window.
+28,000 chars (~7,000 tokens) leaves headroom for the system prompt boilerplate (~6,000 tokens), intent prompt (~1,500 tokens), and the response budget within a 16,384-token model window.
 
 **Tradeoff:** Lowest-scoring sources (assembled last, already score-sorted) may be silently dropped. These are the least likely to be cited.
+
+---
+
+## Change 4 — Research Mode Retrofit
+
+See [RESEARCH_MODE_PLAN.md](RESEARCH_MODE_PLAN.md) for the full implementation plan, checklist, and rationale.
+
+**Summary:** Research modes are retrofitted to own only `min_score` (retrieval sensitivity). `top_k` becomes a fixed ceiling of 20 for all modes. `prompt_enhancement` is retired — intent `prompt_suffix` owns synthesis style. Modes are renamed **Focused / Broad / Exploratory** with updated icons (Crosshair / ScanSearch / Telescope) to reflect what the user is actually choosing. `min_score` values unchanged: 0.40 / 0.30 / 0.25.
 
 ---
 
@@ -143,9 +171,10 @@ if context_parts:
 | Priority | Change | Effort | Expected Benefit |
 |---|---|---|---|
 | 1 | Changes 1+2 together — chunk ordering + dynamic cap | 45 min | Core streaming win; 30–60% context reduction on heavy queries |
-| 2 | Change 3 — total context hard cap | 20 min | Absolute ceiling; protects Deep mode edge cases |
+| 2 | Change 3 — total context hard cap | 20 min | Absolute ceiling; protects edge cases |
+| 3 | Change 4 — research mode retrofit | 20 min | Removes prompt conflict; clean pipeline separation |
 
-**Changes 1+2 must be implemented as one atomic change.** Change 3 is independent and can follow.
+**Changes 1+2 must be implemented as one atomic change.** Changes 3 and 4 are independent and can follow in either order.
 
 ---
 
@@ -155,16 +184,19 @@ if context_parts:
 - Entity-first filtering (`_extract_person_names`, `_extract_course_names`) — untouched
 - Document-level deduplication by filename — untouched
 - Score-based sorting of `sorted_groups` at document level — untouched
-- RAG_CHUNK_RETRIEVAL_ISSUE second-pass fetch — explicitly deferred; current retrieval is working for primary use cases and the second-pass fetch would fight context reduction goals
+- `min_score` values — unchanged from current (0.40 / 0.30 / 0.25)
+- Research mode three-position UI structure — unchanged (labels update to Focused/Broad/Exploratory per RESEARCH_MODE_PLAN.md)
+- RAG_CHUNK_RETRIEVAL_ISSUE second-pass fetch — explicitly deferred
 
 ---
 
 ## Monitoring After Deployment
 
 1. `effective_chunk_cap` — log per request; validate verb-count scaling behaves as expected
-2. `context_char_len` — log after assembly; watch for consistent hits on the hard cap (Change 3)
+2. `context_char_len` — log after assembly; watch for consistent hits on the hard cap
 3. `chunks_dropped_per_doc` — log `len(group["chunks"]) - effective_chunk_cap` when positive
-4. Citation density — if `[N]` marker count drops significantly, cap is too aggressive; raise `_DEFAULT_BASE_CHUNKS`
+4. `min_score_threshold` — log which research mode threshold fired per request
+5. Citation density per mode — if Quick mode shows significantly fewer `[N]` markers after `prompt_enhancement` retirement, add lightweight citation count guidance back to intent definitions
 
 ---
 
@@ -172,3 +204,5 @@ if context_parts:
 
 - `backend/app/api/routes/chat.py` — main RAG pipeline, context assembly, streaming
 - `backend/app/services/intent_classifier.py` — `IntentResult` dataclass + intent definitions + `_count_task_verbs()`
+- `backend/app/core/research_modes.py` — research mode definitions
+- `frontend/src/features/research/config.ts` — UI labels
