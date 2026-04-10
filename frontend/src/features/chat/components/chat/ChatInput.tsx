@@ -7,6 +7,7 @@ import { useDiscussionStore } from '@/features/discussions';
 import { ProviderToggles } from '@/features/providers';
 import { InputActionsDropdown } from '../input/InputActionsDropdown';
 import { VoiceInput } from '../ui/VoiceInput';
+import { PromptWizardModal, detectWizardIntent, detectRole, resolveConfigKey, buildEnrichedMessage } from '../modals/PromptWizardModal';
 import './ChatInput.css';
 
 interface ChatInputProps {
@@ -19,6 +20,9 @@ export function ChatInput({ initialValue = '', onValueChange, placeholder }: Cha
   const hoverPlaceholder = useChatStore((s) => s.hoverPlaceholder);
   const navigate = useNavigate();
   const [input, setInput] = useState(initialValue);
+  const [wizardIntent, setWizardIntent] = useState<string | null>(null);
+  const [wizardConfigKey, setWizardConfigKey] = useState<string>('');
+  const [pendingMessage, setPendingMessage] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { sendMessage, stopStream, isStreaming } = useSSE();
   const { activeDiscussionId, createDiscussion } = useDiscussionStore();
@@ -43,17 +47,11 @@ export function ChatInput({ initialValue = '', onValueChange, placeholder }: Cha
     onValueChange?.(value);
   };
 
-  const handleSubmit = async (e?: FormEvent) => {
-    e?.preventDefault();
-
-    const message = input.trim();
-    if (!message || isStreaming) return;
-
+  const doSend = async (message: string) => {
     let discussionId = activeDiscussionId;
     if (!discussionId) {
       const newDiscussion = await createDiscussion();
       discussionId = newDiscussion.id;
-      // Prevent ChatArea from overwriting messages for this fresh discussion
       skipNextMessageLoad();
       navigate(`/chat/${discussionId}`);
     }
@@ -66,25 +64,59 @@ export function ChatInput({ initialValue = '', onValueChange, placeholder }: Cha
     } catch (error) {
       console.error('Failed to send message:', error);
       const errorMessage = (error as Error).message || '';
-      // If discussion not found (404), likely server restarted - auto-recover by creating new discussion
       if (errorMessage.includes('not found') || errorMessage.includes('404')) {
         try {
-          // Create a fresh discussion and retry automatically
           const newDiscussion = await createDiscussion();
           navigate(`/chat/${newDiscussion.id}`);
           await sendMessage(message, undefined, newDiscussion.id);
         } catch (retryError) {
           console.error('Failed to recover:', retryError);
-          // Restore the message so user doesn't lose it
           setInput(message);
           onValueChange?.(message);
         }
       } else {
-        // For other errors, restore the message
         setInput(message);
         onValueChange?.(message);
       }
     }
+  };
+
+  const handleSubmit = async (e?: FormEvent) => {
+    e?.preventDefault();
+
+    const message = input.trim();
+    if (!message || isStreaming) return;
+
+    const intent = detectWizardIntent(message);
+    if (intent) {
+      const role = detectRole(message);
+      const configKey = resolveConfigKey(intent, role);
+      if (configKey) {
+        setPendingMessage(message);
+        setWizardIntent(intent);
+        setWizardConfigKey(configKey);
+        return;
+      }
+    }
+
+    await doSend(message);
+  };
+
+  const handleWizardComplete = async (answers: string[]) => {
+    setWizardIntent(null);
+    const enriched = buildEnrichedMessage(pendingMessage, wizardConfigKey, answers);
+    await doSend(enriched);
+  };
+
+  const handleWizardSkipStep = async () => {
+    setWizardIntent(null);
+    await doSend(pendingMessage);
+  };
+
+  const handleWizardDismiss = () => {
+    setWizardIntent(null);
+    setInput(pendingMessage);
+    onValueChange?.(pendingMessage);
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -96,6 +128,13 @@ export function ChatInput({ initialValue = '', onValueChange, placeholder }: Cha
 
   return (
     <div className="chat-input">
+      <PromptWizardModal
+        isOpen={!!wizardIntent}
+        configKey={wizardConfigKey}
+        onComplete={handleWizardComplete}
+        onSkipStep={handleWizardSkipStep}
+        onDismiss={handleWizardDismiss}
+      />
       <form className="chat-input-form" onSubmit={handleSubmit}>
         <div className="chat-input-box">
           <InputActionsDropdown />
