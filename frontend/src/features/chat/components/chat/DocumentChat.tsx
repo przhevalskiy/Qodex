@@ -70,7 +70,7 @@ export function DocumentChat({ documentId, documentContent: _documentContent }: 
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
   }, [documentChatMessages, documentChatContent]);
 
   const handleSend = async () => {
