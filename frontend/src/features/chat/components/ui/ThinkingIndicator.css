@@ -1,6 +1,7 @@
 .thinking-indicator {
   padding: 1rem 1.5rem;
   margin-bottom: 1rem;
+  animation: chatMessageIn 0.25s ease-out;
 }
 
 .thinking-indicator-content {

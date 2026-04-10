@@ -1,8 +1,20 @@
+@keyframes chatMessageIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Chat Message Container */
 .chat-message {
   display: flex;
   gap: 16px;
   padding: 24px 0;
+  animation: chatMessageIn 0.25s ease-out;
 }
 
 .chat-message + .chat-message {
