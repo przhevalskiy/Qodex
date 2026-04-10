@@ -51,10 +51,43 @@ async def fetch_chunks_for_document(
     return chunks
 
 
+_DOC_CONCURRENCY = 10  # documents processed in parallel
+
+
+async def process_one(pinecone, doc_id: str, vector_ids: list, index: int, total: int, counters: dict) -> None:
+    prefix = f"[{index}/{total}] {doc_id[:8]}... ({len(vector_ids)} chunks)"
+
+    existing = await _get_formatted_from_db(doc_id)
+    if existing and len(existing) == len(vector_ids):
+        print(f"{prefix} — already cached, skipping", flush=True)
+        counters["skipped"] += 1
+        return
+
+    try:
+        raw_chunks = await fetch_chunks_for_document(pinecone, doc_id, vector_ids)
+    except Exception as e:
+        print(f"{prefix} — FAILED to fetch: {e}", flush=True)
+        counters["failed"] += 1
+        return
+
+    if not raw_chunks:
+        print(f"{prefix} — no content found, skipping", flush=True)
+        counters["skipped"] += 1
+        return
+
+    try:
+        chunks = [FormatChunk(id=c["id"], content=c["content"]) for c in raw_chunks]
+        await _run_format_and_persist(doc_id, chunks)
+        print(f"{prefix} — done", flush=True)
+        counters["formatted"] += 1
+    except Exception as e:
+        print(f"{prefix} — FAILED to format: {e}", flush=True)
+        counters["failed"] += 1
+
+
 async def main() -> None:
     pinecone = get_pinecone_service()
 
-    # Step 1: list all vector IDs and group by document_id
     print("Listing all vectors from Pinecone...")
     all_ids = await pinecone.list_all_vector_ids()
     print(f"Found {len(all_ids)} vectors total\n")
@@ -63,7 +96,6 @@ async def main() -> None:
         print("Nothing to do — no vectors in Pinecone.")
         return
 
-    # Group: vector ID format is {doc_uuid}_{chunk_index}
     doc_vectors: dict[str, list[str]] = {}
     for vid in all_ids:
         parts = vid.rsplit("_", 1)
@@ -71,48 +103,21 @@ async def main() -> None:
         doc_vectors.setdefault(doc_id, []).append(vid)
 
     documents = list(doc_vectors.items())
-    print(f"Found {len(documents)} document(s)\n")
+    print(f"Found {len(documents)} document(s) — processing {_DOC_CONCURRENCY} at a time\n")
 
-    skipped = 0
-    formatted = 0
-    failed = 0
+    counters = {"skipped": 0, "formatted": 0, "failed": 0}
+    sem = asyncio.Semaphore(_DOC_CONCURRENCY)
 
-    for i, (doc_id, vector_ids) in enumerate(documents, start=1):
-        prefix = f"[{i}/{len(documents)}] {doc_id[:8]}... ({len(vector_ids)} chunks)"
+    async def bounded(index, doc_id, vector_ids):
+        async with sem:
+            await process_one(pinecone, doc_id, vector_ids, index, len(documents), counters)
 
-        # Step 2: check Supabase cache first
-        existing = await _get_formatted_from_db(doc_id)
-        if existing and len(existing) == len(vector_ids):
-            print(f"{prefix} — already cached, skipping")
-            skipped += 1
-            continue
+    await asyncio.gather(*[
+        bounded(i, doc_id, vector_ids)
+        for i, (doc_id, vector_ids) in enumerate(documents, start=1)
+    ])
 
-        # Step 3: fetch raw vectors from Pinecone
-        print(f"{prefix} — fetching from Pinecone...", end="", flush=True)
-        try:
-            raw_chunks = await fetch_chunks_for_document(pinecone, doc_id, vector_ids)
-        except Exception as e:
-            print(f" FAILED to fetch: {e}")
-            failed += 1
-            continue
-
-        if not raw_chunks:
-            print(f" no content found, skipping")
-            skipped += 1
-            continue
-
-        # Step 4: format and persist
-        print(f" formatting {len(raw_chunks)} chunks...", end="", flush=True)
-        try:
-            chunks = [FormatChunk(id=c["id"], content=c["content"]) for c in raw_chunks]
-            await _run_format_and_persist(doc_id, chunks)
-            print(f" done")
-            formatted += 1
-        except Exception as e:
-            print(f" FAILED: {e}")
-            failed += 1
-
-    print(f"\nSummary: {formatted} formatted, {skipped} skipped, {failed} failed")
+    print(f"\nSummary: {counters['formatted']} formatted, {counters['skipped']} skipped, {counters['failed']} failed")
 
 
 if __name__ == "__main__":

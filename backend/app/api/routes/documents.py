@@ -46,7 +46,7 @@ async def _get_formatted_from_db(document_id: str) -> Optional[dict[str, str]]:
             return None
         return {row["chunk_id"]: row["formatted_content"] for row in rows}
     except Exception as e:
-        logger.warning("Failed to read formatted chunks from Supabase: %s", e)
+        print(f"[FORMAT] failed to read formatted chunks from Supabase for {document_id}: {e}", flush=True)
         return None
 
 
@@ -70,7 +70,7 @@ async def _save_formatted_to_db(document_id: str, results: list[dict]) -> None:
             .upsert(rows, on_conflict="document_id,chunk_id") \
             .execute()
     except Exception as e:
-        logger.warning("Failed to save formatted chunks to Supabase: %s", e)
+        print(f"[FORMAT] failed to save formatted chunks to Supabase for {document_id}: {e}", flush=True)
 
 
 async def _get_content_from_format_cache(document_id: str) -> Optional[list]:
@@ -108,7 +108,7 @@ async def _get_content_from_format_cache(document_id: str) -> Optional[list]:
             })
         return sorted(chunks, key=lambda c: c["chunk_index"])
     except Exception as e:
-        logger.warning("PREVIEW CACHE ERROR: %s", e)
+        print(f"[FORMAT] preview cache error for {document_id}: {e}", flush=True)
         return None
 
 
@@ -143,18 +143,27 @@ async def _background_format_document(document_id: str) -> None:
     """
     Background task: fetch chunks from Pinecone and run format+persist pipeline.
     Fires after upload completes so the first document open is always instant.
+
+    Retries up to 3 times with increasing delays to handle Pinecone's indexing
+    propagation delay (newly upserted vectors take 2-5s to become queryable).
     """
-    try:
-        doc_service = get_document_service()
-        content = await doc_service.get_document_content(document_id)
-        chunks_raw = content.get("chunks", [])
-        if not chunks_raw:
+    doc_service = get_document_service()
+    delays = [3, 6, 10]  # seconds between retries
+    for attempt, delay in enumerate(delays, start=1):
+        await asyncio.sleep(delay)
+        try:
+            content = await doc_service.get_document_content(document_id)
+            chunks_raw = content.get("chunks", [])
+            if not chunks_raw:
+                print(f"[FORMAT] attempt {attempt}: no chunks yet for {document_id}, retrying...", flush=True)
+                continue
+            chunks = [FormatChunk(id=c["id"], content=c["content"]) for c in chunks_raw]
+            await _run_format_and_persist(document_id, chunks)
+            print(f"[FORMAT] background formatting complete for {document_id} ({len(chunks)} chunks, attempt {attempt})", flush=True)
             return
-        chunks = [FormatChunk(id=c["id"], content=c["content"]) for c in chunks_raw]
-        await _run_format_and_persist(document_id, chunks)
-        logger.info("Background formatting complete for document %s (%d chunks)", document_id, len(chunks))
-    except Exception as e:
-        logger.warning("Background formatting failed for document %s: %s", document_id, e)
+        except Exception as e:
+            print(f"[FORMAT] attempt {attempt} failed for {document_id}: {e}", flush=True)
+    print(f"[FORMAT] all retries exhausted for {document_id} — format cache not pre-warmed", flush=True)
 
 
 @router.post("/upload", response_model=Document)
