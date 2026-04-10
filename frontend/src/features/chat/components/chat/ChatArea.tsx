@@ -14,29 +14,28 @@ import { FilePreviewModal } from '../attachments/FilePreviewModal';
 import { FileText, BookOpen, FlaskConical, Users, Video, Lightbulb, Microscope, BookMarked, GraduationCap, ArrowUpRight, X } from 'lucide-react';
 import './ChatArea.css';
 
-// Throttle function for scroll operations
-function useThrottledScroll(delay: number = 100) {
-  const lastCallRef = useRef<number>(0);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+// Continuously pins scroll to the bottom during streaming using requestAnimationFrame.
+// Returns a start/stop handle — call start() when streaming begins, stop() when done.
+function useRafScroll(containerRef: React.RefObject<HTMLDivElement | null>) {
+  const rafRef = useRef<number | null>(null);
 
-  return useCallback((element: HTMLElement | null, behavior: ScrollBehavior) => {
-    if (!element) return;
+  const start = useCallback(() => {
+    const loop = () => {
+      const el = containerRef.current;
+      if (el) el.scrollTop = el.scrollHeight;
+      rafRef.current = requestAnimationFrame(loop);
+    };
+    if (!rafRef.current) rafRef.current = requestAnimationFrame(loop);
+  }, [containerRef]);
 
-    const now = Date.now();
-    const timeSinceLastCall = now - lastCallRef.current;
-
-    if (timeSinceLastCall >= delay) {
-      lastCallRef.current = now;
-      element.scrollIntoView({ behavior });
-    } else if (!timeoutRef.current) {
-      // Schedule a scroll at the end of the throttle period
-      timeoutRef.current = setTimeout(() => {
-        lastCallRef.current = Date.now();
-        element.scrollIntoView({ behavior });
-        timeoutRef.current = null;
-      }, delay - timeSinceLastCall);
+  const stop = useCallback(() => {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
     }
-  }, [delay]);
+  }, []);
+
+  return { start, stop };
 }
 
 interface ChatAreaProps {
@@ -45,6 +44,7 @@ interface ChatAreaProps {
 
 export function ChatArea({ initialMessage }: ChatAreaProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const [inputValue, setInputValue] = useState('');
   const [hoverPrompt, setHoverPrompt] = useState('');
   const prevDiscussionIdRef = useRef<string | null>(null);
@@ -55,7 +55,7 @@ export function ChatArea({ initialMessage }: ChatAreaProps) {
   const { activeDiscussionId, discussions } = useDiscussionStore();
   const { fetchProviders } = useProviderStore();
   const { sendMessage } = useSSE();
-  const throttledScroll = useThrottledScroll(100); // Throttle to max 10 scrolls/second
+  const { start: startRafScroll, stop: stopRafScroll } = useRafScroll(messagesContainerRef);
 
   // Get current discussion for header and title
   const currentDiscussion = discussions.find(d => d.id === activeDiscussionId);
@@ -107,15 +107,16 @@ export function ChatArea({ initialMessage }: ChatAreaProps) {
     }
   }, [activeDiscussionId, currentDiscussion]);
 
+  // Start rAF scroll loop when streaming, stop and snap to bottom when done
   useEffect(() => {
-    // Throttle scroll during streaming, smooth scroll on new messages
     if (isStreaming) {
-      throttledScroll(messagesEndRef.current, 'instant');
+      startRafScroll();
     } else {
-      // Direct scroll for final message (not throttled)
+      stopRafScroll();
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages, currentStreamContent, isStreaming, throttledScroll]);
+    return () => stopRafScroll();
+  }, [isStreaming, startRafScroll, stopRafScroll]);
 
   // Auto-send initial message from sample questions
   useEffect(() => {
@@ -192,7 +193,7 @@ export function ChatArea({ initialMessage }: ChatAreaProps) {
             />
           )}
 
-          <div className="chat-messages">
+          <div className="chat-messages" ref={messagesContainerRef}>
             <div className="chat-messages-inner">
               {messages.map((message) => (
                 <ChatMessage
