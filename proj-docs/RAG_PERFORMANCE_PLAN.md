@@ -4,7 +4,7 @@
 
 On heavy queries the LLM receives a large assembled context string before generating its first token. Attention cost scales quadratically with context length, so a query that pulls 16 documents — each potentially contributing several chunks — can push the system prompt past 20,000 tokens. The first token latency (TTFT) and inter-token rate both degrade. Four targeted changes address this without degrading answer quality.
 
-The user experience is: **thinking indicator → first token arrives**. The gap between those two is what's felt. Changes 1+2 directly compress that gap by reducing context size. Change 3 is the absolute safety net. Change 4 retrofits research modes so they do non-redundant, non-conflicting work alongside the rest of the pipeline.
+The user experience is: **thinking indicator → first token arrives**. The gap between those two is what's felt. Changes 1+2 directly compress that gap by reducing context size. Change 3 is the absolute safety net.
 
 ---
 
@@ -158,23 +158,14 @@ if context_parts:
 
 ---
 
-## Change 4 — Research Mode Retrofit
-
-See [RESEARCH_MODE_PLAN.md](RESEARCH_MODE_PLAN.md) for the full implementation plan, checklist, and rationale.
-
-**Summary:** Research modes are retrofitted to own only `min_score` (retrieval sensitivity). `top_k` becomes a fixed ceiling of 20 for all modes. `prompt_enhancement` is retired — intent `prompt_suffix` owns synthesis style. Modes are renamed **Focused / Broad / Exploratory** with updated icons (Crosshair / ScanSearch / Telescope) to reflect what the user is actually choosing. `min_score` values unchanged: 0.40 / 0.30 / 0.25.
-
----
-
 ## Implementation Order
 
 | Priority | Change | Effort | Expected Benefit |
 |---|---|---|---|
 | 1 | Changes 1+2 together — chunk ordering + dynamic cap | 45 min | Core streaming win; 30–60% context reduction on heavy queries |
 | 2 | Change 3 — total context hard cap | 20 min | Absolute ceiling; protects edge cases |
-| 3 | Change 4 — research mode retrofit | 20 min | Removes prompt conflict; clean pipeline separation |
 
-**Changes 1+2 must be implemented as one atomic change.** Changes 3 and 4 are independent and can follow in either order.
+**Changes 1+2 must be implemented as one atomic change.** Change 3 is independent and can follow.
 
 ---
 
@@ -185,7 +176,7 @@ See [RESEARCH_MODE_PLAN.md](RESEARCH_MODE_PLAN.md) for the full implementation p
 - Document-level deduplication by filename — untouched
 - Score-based sorting of `sorted_groups` at document level — untouched
 - `min_score` values — unchanged from current (0.40 / 0.30 / 0.25)
-- Research mode three-position UI structure — unchanged (labels update to Focused/Broad/Exploratory per RESEARCH_MODE_PLAN.md)
+- Research mode three-position UI structure — unchanged
 - RAG_CHUNK_RETRIEVAL_ISSUE second-pass fetch — explicitly deferred
 
 ---
