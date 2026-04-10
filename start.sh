@@ -78,7 +78,7 @@ source venv/bin/activate
 pip install -r requirements.txt --quiet
 
 # Start uvicorn in background
-nohup uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload > "$SCRIPT_DIR/logs/backend.log" 2>&1 &
+nohup env PYTHONUNBUFFERED=1 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload > "$SCRIPT_DIR/logs/backend.log" 2>&1 &
 BACKEND_PID=$!
 echo $BACKEND_PID > "$PID_DIR/backend.pid"
 echo -e "${GREEN}✓ Backend started (PID: $BACKEND_PID)${NC}"

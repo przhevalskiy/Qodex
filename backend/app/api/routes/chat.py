@@ -395,6 +395,8 @@ async def stream_chat(
     """
     settings = get_settings()
     disc_service = get_discussion_service()
+    _t0 = time.time()
+    print(f"[PIPELINE] START — provider={request.provider} research={request.research_mode}", flush=True)
 
     # Validate discussion exists and belongs to user
     user_id = current_user.user_id
@@ -454,6 +456,7 @@ async def stream_chat(
     # Classify user intent for structured output (zero-latency regex matching)
     # When attachments exist, also determines if Pinecone should be queried
     intent_result = classify_intent(request.message, has_attachments=has_attachments)
+    print(f"[PIPELINE] intent={intent_result.intent} use_kb={intent_result.use_knowledge_base} +{int((time.time()-_t0)*1000)}ms")
 
     # Continuation resolution:
     # If the user is resuming a truncated response, find the last assistant message,
@@ -534,9 +537,11 @@ async def stream_chat(
     # Skip the rewrite LLM call entirely for self-contained queries — saves
     # 300-600ms on the critical path when no pronoun resolution is needed.
     if _REWRITE_TRIGGERS.search(request.message):
+        print(f"[PIPELINE] query rewrite triggered +{int((time.time()-_t0)*1000)}ms")
         search_query = await _rewrite_search_query(
             request.message, context_messages, settings
         )
+        print(f"[PIPELINE] query rewrite done +{int((time.time()-_t0)*1000)}ms")
     else:
         search_query = request.message
 
@@ -583,6 +588,7 @@ async def stream_chat(
         # below trims the set back down before building context.
         pinecone_top_k = max(research_config.top_k * 3, 20)
 
+        print(f"[PIPELINE] pinecone search start top_k={pinecone_top_k} +{int((time.time()-_t0)*1000)}ms")
         rag_task = asyncio.create_task(
             doc_service.pinecone.search_documents(
                 query=search_query,
@@ -610,6 +616,7 @@ async def stream_chat(
     if rag_task is not None:
         try:
             search_results = await rag_task
+            print(f"[PIPELINE] pinecone done results={len(search_results)} +{int((time.time()-_t0)*1000)}ms")
 
             # Extract query terms for entity-content boosting
             query_terms = _extract_query_terms(search_query)
@@ -848,7 +855,10 @@ async def stream_chat(
 
         # Wrap the provider stream to collect raw chunks before SSE serialization,
         # avoiding the cost of re-parsing our own JSON output.
+        _first_chunk = True
+        print(f"[PIPELINE] stream start provider={effective_provider} max_tokens={effective_max_tokens} +{int((time.time()-_t0)*1000)}ms")
         async def _collect_and_stream():
+            nonlocal _first_chunk
             async for chunk in provider.stream_completion(
                 messages=context_messages,
                 context=context,
@@ -859,6 +869,9 @@ async def stream_chat(
                 image_attachments=image_attachments or None,
                 stream_metadata=stream_metadata,
             ):
+                if _first_chunk:
+                    print(f"[PIPELINE] first chunk +{int((time.time()-_t0)*1000)}ms")
+                    _first_chunk = False
                 full_response.append(chunk)
                 yield chunk
 
@@ -870,6 +883,7 @@ async def stream_chat(
             yield sse_event
 
         # Save assistant response to discussion after streaming completes
+        print(f"[PIPELINE] stream complete +{int((time.time()-_t0)*1000)}ms")
         response_time = int((time.time() - start_time) * 1000)
         full_response_text = "".join(full_response)
         # Clean up stray space-before-punctuation artifacts (Mistral citation omission pattern)
@@ -894,6 +908,7 @@ async def stream_chat(
         )
 
         # Generate suggested questions
+        print(f"[PIPELINE] suggested questions start +{int((time.time()-_t0)*1000)}ms")
         try:
             # Build conversation history for context
             conversation_history = [
@@ -921,13 +936,14 @@ async def stream_chat(
                 assistant_message.suggested_questions = suggested_questions
 
         except Exception as e:
-            logger.warning(f"Failed to generate suggested questions: {e}")
+            print(f"[PIPELINE] suggested questions failed: {e}")
             # Don't fail the whole request if question generation fails
 
         # Determine if the response was truncated by the token limit
         truncated = stream_metadata.get('stop_reason') == 'max_tokens'
 
         # Send done event after suggested questions
+        print(f"[PIPELINE] DONE total={int((time.time()-_t0)*1000)}ms truncated={truncated}")
         yield format_sse_event("done", {"provider": effective_provider, "truncated": truncated})
 
         # Persist truncation flag on the message so future sessions can detect it
