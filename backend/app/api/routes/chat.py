@@ -23,7 +23,7 @@ from app.services.document_service import get_document_service
 from app.services.attachment_service import get_attachment_service
 from app.services.discussion_service import get_discussion_service
 from app.utils.streaming import create_sse_response, format_sse_event
-from app.services.intent_classifier import classify_intent, INTENT_LOOKUP, CONTINUATION_INSTRUCTION, _count_task_verbs
+from app.services.intent_classifier import classify_intent, INTENT_LOOKUP, CONTINUATION_INSTRUCTION
 from app.auth import get_current_user, UserContext
 from app.utils.course_utils import extract_course_title_from_content
 
@@ -34,14 +34,6 @@ _CITATION_RE = re.compile(r'\[\d+\]')
 
 # Fallback minimum cosine similarity (used only if research config lacks min_score)
 _MIN_SCORE = 0.40
-
-# Per-document chunk cap defaults (intent definitions carry their own overrides)
-_DEFAULT_BASE_CHUNKS = 3
-_DEFAULT_MAX_CHUNKS = 8
-
-# Absolute ceiling on assembled context string (~7,000 tokens; leaves headroom for
-# system prompt boilerplate + intent prompt + response budget within a 16k window)
-_MAX_CONTEXT_CHARS = 28_000
 
 # Matches bullet symbols, course-code prefixes (L1, L2 …), page markers, etc.
 _ARTIFACT_RE = re.compile(r'[●•▪▸◦·]\s*|^\s*[A-Z]\d+\s+', re.MULTILINE)
@@ -252,7 +244,7 @@ def _course_found_in_chunks(course_name: str, doc_groups: List) -> bool:
     ]
 
     for _, group in doc_groups:
-        combined = " ".join(c for c, _ in group["chunks"]).lower()
+        combined = " ".join(group["chunks"]).lower()
         # Normalize whitespace in combined content for reliable substring search
         combined = re.sub(r'\s+', ' ', combined)
         if any(ngram in combined for ngram in title_ngrams):
@@ -519,15 +511,6 @@ async def stream_chat(
     # Get research mode configuration
     research_config = get_research_mode_config(request.research_mode)
 
-    # Dynamic per-document chunk cap: base depth + task verb count, bounded by intent ceiling.
-    # More verbs in the query = broader information need = more chunks allowed per doc.
-    # Continuation inherits the primary intent's cap implicitly (generalist default is fine).
-    _task_verb_count = _count_task_verbs(request.message.lower())
-    _base_chunks = intent_result.base_chunks_per_doc or _DEFAULT_BASE_CHUNKS
-    _max_chunks = intent_result.max_chunks_per_doc or _DEFAULT_MAX_CHUNKS
-    effective_chunk_cap = min(_base_chunks + _task_verb_count, _max_chunks)
-    print(f"[PIPELINE] chunk_cap={effective_chunk_cap} (base={_base_chunks} verbs={_task_verb_count} ceiling={_max_chunks})", flush=True)
-
     # Get conversation context early — needed for query rewriting AND
     # later passed to the provider.  Sanitized to prevent stale source
     # facts from bleeding into the current RAG turn.
@@ -688,7 +671,7 @@ async def stream_chat(
                         }
 
                     group = doc_groups[doc_id]
-                    group["chunks"].append((content, effective_score))
+                    group["chunks"].append(content)
                     if effective_score > group["best_score"]:
                         group["best_score"] = effective_score
                         group["best_chunk_id"] = chunk_id
@@ -723,11 +706,7 @@ async def stream_chat(
             citation_number = 1
 
             for doc_id, group in sorted_groups:
-                # Sort chunks by effective_score descending, then cap to effective_chunk_cap.
-                # Ensures the highest-relevance chunks are kept when a document has many matches.
-                sorted_chunks = sorted(group["chunks"], key=lambda x: x[1], reverse=True)
-                top_chunks = [c for c, _ in sorted_chunks[:effective_chunk_cap]]
-                combined_content = "\n\n".join(top_chunks)
+                combined_content = "\n\n".join(group["chunks"])
                 # Strip bracketed reference numbers from source text (e.g. [48], [52])
                 # so the AI doesn't confuse them with our [Source N] citation numbers
                 combined_content = _CITATION_RE.sub('', combined_content)
@@ -746,17 +725,6 @@ async def stream_chat(
 
             if context_parts:
                 context = "\n\n---\n\n".join(context_parts)
-
-                # Hard cap: if assembled context exceeds _MAX_CONTEXT_CHARS, truncate
-                # at the last clean source boundary to avoid splitting a source mid-sentence.
-                # Lowest-scoring sources (appended last) are dropped first.
-                if len(context) > _MAX_CONTEXT_CHARS:
-                    last_boundary = context[:_MAX_CONTEXT_CHARS].rfind("\n\n---\n\n")
-                    if last_boundary > _MAX_CONTEXT_CHARS // 2:
-                        context = context[:last_boundary]
-                    else:
-                        context = context[:_MAX_CONTEXT_CHARS]
-                    print(f"[PIPELINE] context hard-capped at {len(context)} chars", flush=True)
 
                 # Course mismatch check: if the user asked about a specific named
                 # course but none of the retrieved chunks contain that course title,
