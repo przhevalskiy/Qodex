@@ -16,6 +16,8 @@ class IntentResult:
     use_knowledge_base: bool = True  # Whether to query Pinecone
     preferred_provider: Optional[str] = None  # Override user-selected provider if set
     max_tokens: Optional[int] = None  # Per-intent token budget override; None = use request default
+    base_chunks_per_doc: Optional[int] = None  # Base chunk depth per document
+    max_chunks_per_doc: Optional[int] = None   # Ceiling chunk depth per document (regardless of verb count)
 
 
 # Citation format rule injected into every intent prompt.
@@ -93,6 +95,8 @@ INTENT_DEFINITIONS = [
         "intent": "summarize",
         "label": "Summary",
         "preferred_provider": "mistral",
+        "base_chunks_per_doc": 2,
+        "max_chunks_per_doc": 5,
         "patterns": [
             r"\bsummar(y|ize|ise)\b",
             r"\boverview\b",
@@ -123,6 +127,8 @@ INTENT_DEFINITIONS = [
         "intent": "explain",
         "label": "Explainer",
         "preferred_provider": "claude",
+        "base_chunks_per_doc": 2,
+        "max_chunks_per_doc": 5,
         "patterns": [
             r"\bexplain\b",
             r"\bsimpl(er|ify|e terms)\b",
@@ -151,6 +157,8 @@ INTENT_DEFINITIONS = [
         "intent": "compare",
         "label": "Comparison",
         "preferred_provider": "mistral",
+        "base_chunks_per_doc": 3,
+        "max_chunks_per_doc": 7,
         "patterns": [
             r"\bcompar(e|ison|ing)\b",
             r"\bdifferen(ce|t|ces|tiate)\b",
@@ -185,6 +193,8 @@ INTENT_DEFINITIONS = [
         "label": "Builder",
         "preferred_provider": "claude",
         "max_tokens": 12000,
+        "base_chunks_per_doc": 5,
+        "max_chunks_per_doc": 12,
         "patterns": [
             # Explicit "case study" phrase match — catches "write a detailed case study", etc.
             r"\b(build|create|write|draft|develop|construct|generate|produce)\b.{0,40}\bcase stud(y|ies)\b",
@@ -282,6 +292,8 @@ INTENT_DEFINITIONS = [
         "intent": "generate_questions",
         "label": "Assessment",
         "preferred_provider": "claude",
+        "base_chunks_per_doc": 2,
+        "max_chunks_per_doc": 5,
         "patterns": [
             r"\b(generate|create|write|give me|suggest|come up with) .*(questions?|quiz|exam|test|assessment)\b",
             r"\bquiz me\b",
@@ -320,6 +332,8 @@ INTENT_DEFINITIONS = [
         "intent": "critique",
         "label": "Critique",
         "preferred_provider": "claude",
+        "base_chunks_per_doc": 3,
+        "max_chunks_per_doc": 7,
         "patterns": [
             r"\bcritiqu(e|ing)\b",
             r"\bweakness(es)?\b",
@@ -354,6 +368,8 @@ INTENT_DEFINITIONS = [
         "intent": "methodology",
         "label": "Methodology",
         "preferred_provider": "claude",
+        "base_chunks_per_doc": 3,
+        "max_chunks_per_doc": 8,
         "patterns": [
             r"\bmethodolog(y|ies|ical)\b",
             r"\bresearch (design|method|approach)\b",
@@ -384,6 +400,8 @@ INTENT_DEFINITIONS = [
         "intent": "lesson_plan",
         "label": "Lesson Plan",
         "preferred_provider": "mistral",
+        "base_chunks_per_doc": 4,
+        "max_chunks_per_doc": 8,
         "patterns": [
             r"\blesson plan\b",
             r"\bteaching (plan|strategy|approach|activity|activities)\b",
@@ -421,6 +439,8 @@ INTENT_DEFINITIONS = [
         "intent": "find_readings",
         "label": "Reading List",
         "preferred_provider": "mistral",
+        "base_chunks_per_doc": 2,
+        "max_chunks_per_doc": 4,
         "patterns": [
             r"\b(find|suggest|recommend|list|give me|show me|what are).{0,30}(readings?|materials?|resources?|texts?|articles?|papers?|books?)\b",
             r"\b(supplementary|additional|related|relevant|required|optional) (readings?|materials?|resources?|texts?)\b",
@@ -574,6 +594,8 @@ def classify_intent(message: str, has_attachments: bool = False) -> IntentResult
             use_knowledge_base=use_kb,
             preferred_provider=definition.get("preferred_provider"),
             max_tokens=definition.get("max_tokens"),
+            base_chunks_per_doc=definition.get("base_chunks_per_doc"),
+            max_chunks_per_doc=definition.get("max_chunks_per_doc"),
         )
 
     # Fallback: generalist agent — comprehensive, well-structured responses
@@ -581,6 +603,8 @@ def classify_intent(message: str, has_attachments: bool = False) -> IntentResult
         intent="generalist",
         label="Generalist",
         preferred_provider="mistral",
+        base_chunks_per_doc=3,
+        max_chunks_per_doc=8,
         prompt_suffix=(
             "\n\nProvide a comprehensive, well-structured response:\n"
             "- Lead with a clear, concise answer to the user's question\n"
