@@ -16,10 +16,10 @@ AI-powered research platform with multi-provider RAG, sentence-level citation at
 ### Advanced RAG Pipeline
 - **Pinecone Vector Database**: Semantic search with cosine similarity (text-embedding-3-small, 1536 dims)
 - **Entity-First Retrieval**: N-gram extraction with instructor name matching to prevent cross-contamination
-- **Research Modes**: Quick (7 sources, score ≥ 0.40), Enhanced (12 sources, ≥ 0.30), Deep (16 sources, ≥ 0.25)
-- **Intent Classification**: 11 specialized intents (Summarize, Explain, Compare, Builder, Case Analysis, Assessment, Critique, Methodology, Lesson Plan, etc.) with zero-latency regex matching
+- **Research Modes**: Focused (7 sources, score ≥ 0.40), Broad (12 sources, ≥ 0.30), Exploratory (20 sources, ≥ 0.25)
+- **Intent Classification**: 11 specialized intents + generalist fallback (Summarize, Explain, Compare, Builder, Find Readings, Case Analysis, Assessment, Critique, Methodology, Lesson Plan, etc.) with zero-latency regex matching
 - **Smart Context Injection**: Token-aware chunking (500 tokens/chunk, 50 token overlap) with structure preservation
-- **Query Rewriting**: Mistral-based pronoun resolution for follow-up questions (e.g. "tell me more about it")
+- **Query Rewriting**: Mistral-based pronoun resolution for follow-up questions (e.g. "tell me more about it") — skipped automatically when no pronouns or no prior context detected
 
 ### Citation System
 - **Inline markers**: `[N]` (grounded fact from source N), `[AI:N,M]` (inference extending sources N and M), `[AI]` (pure general knowledge)
@@ -52,7 +52,8 @@ AI-powered research platform with multi-provider RAG, sentence-level citation at
 - Hovering a submenu item or journey question previews it as the input placeholder
 
 ### Export & Voice
-- **Export Chat**: Export the current conversation to PDF with formatting, citations, title, and timestamps
+- **Export Chat (PDF)**: Export the current conversation to PDF with formatting, citations, title, and timestamps
+- **Export Chat (DOCX)**: Save the current conversation as a Word document with structured formatting
 - **Export History**: Export your full discussion list to PDF with title, timestamps, and chat URL per discussion
 - **Voice Input**: Web Speech API integration for speech-to-text transcription
 - **Share**: Shareable discussion links with public RLS access
@@ -99,7 +100,7 @@ AI-powered research platform with multi-provider RAG, sentence-level citation at
 - **PineconeService**: Vector DB client with lazy initialization and batch upsert
 - **IntentClassifier**: Regex-based intent detection, 11 intents + generalist fallback, zero-latency
 
-**Intent Classification** (11 intents)
+**Intent Classification** (11 intents + generalist fallback)
 
 | Intent | Label | Preferred Provider |
 |--------|-------|--------------------|
@@ -108,6 +109,8 @@ AI-powered research platform with multi-provider RAG, sentence-level citation at
 | `explain` | Explainer | Claude |
 | `compare` | Comparison | Mistral |
 | `builder` | Builder | Claude |
+| `find_readings` | Find Readings | Mistral |
+| `case_analysis` | Case Analysis | Claude |
 | `generate_questions` | Assessment | Claude |
 | `critique` | Critique | Claude |
 | `methodology` | Methodology | Claude |
@@ -127,10 +130,12 @@ AI-powered research platform with multi-provider RAG, sentence-level citation at
 - **Embedding**: Batch upsert to Pinecone with document_id + chunk_index metadata
 
 **Streaming Pipeline**
-- SSE events emitted in order: `discussion_title` → `sources` → `intent` → `chunk` (repeated) → `suggested_questions` → `done`
+- SSE events emitted in order: `discussion_title` → `sources` → `intent` → `chunk` (repeated) → `done` → `suggested_questions`
 - Continuation detection: if prior assistant message is marked `is_truncated`, rewrites query to resume from exact cut-off
 - Stale citation sanitization: strips `[N]` markers from prior messages before sending to model (prevents hallucinated re-citations)
 - Post-processing: removes contradictory `[N][AI]` co-occurrences from Mistral output via `re.sub`
+- **Suggested questions fallback**: if Mistral returns 429 (capacity exceeded), falls back to Claude Haiku for question generation
+- **Pipeline timing logs**: `[PIPELINE]` print statements (stdout, unbuffered) log stage durations to `logs/backend.log` for latency diagnosis
 
 **API Routes**
 - `POST /api/chat/stream` — SSE streaming chat
@@ -183,7 +188,7 @@ AI-powered research platform with multi-provider RAG, sentence-level citation at
 - **SSEClient** (`sse.ts`) — Async generator SSE parser; yields typed events; supports AbortSignal
 - **Supabase Client** (`supabase.ts`) — `@supabase/supabase-js` singleton
 - **Voice Service** (`voice.ts`) — Web Speech API wrapper
-- **PDF Export** (`pdfExport.ts`) — `exportDocumentToPDF()` for chat; `exportHistoryToPDF()` for history list
+- **PDF Export** (`pdfExport.ts`) — `exportDocumentToPDF()` for chat; `exportHistoryToPDF()` for history list; `exportDocumentToDocx()` for DOCX export
 
 **Custom Hooks**
 - **useSSE** — Orchestrates send flow: create discussion → add user message → start SSE → handle events → finalize
@@ -191,7 +196,8 @@ AI-powered research platform with multi-provider RAG, sentence-level citation at
 - **useVoice** — Speech-to-text with start/stop/transcript
 
 **Key Components**
-- **ChatArea** — Main chat container; empty state with quick-action chips + submenus; auto-scroll (throttled)
+- **ChatArea** — Main chat container; empty state with quick-action chips + submenus; continuous rAF scroll loop during streaming (60fps), smooth scrollIntoView on completion
+- **ThinkingIndicator** — Animated loading state shown while waiting for the first streamed chunk; displays provider name
 - **ChatMessage** — Message with role, timestamp, provider badge, token/latency metrics, Continue On chip
 - **ChatInput** — Textarea with voice, attachments, provider selector, research mode; hover placeholder from store
 - **SourcesDisplay** — Tabbed source view (Grid / Chat / References) with clickable `[N]` citation chips
@@ -201,7 +207,8 @@ AI-powered research platform with multi-provider RAG, sentence-level citation at
 - **AuthModal** — Sign up / sign in with avatar picker, display name, preferred name, email confirmation flow
 - **Sidebar** — Discussion list, new chat, 3-dot menu (export history, delete all), collapsible with drag-handle cursor cue
 - **ProviderToggles** — Desktop toggle buttons; mobile modal selector
-- **ResearchModeSelector** — Quick / Enhanced / Deep mode picker with descriptions
+- **ResearchModeSelector** — Focused / Broad / Exploratory mode picker with descriptions
+- **ChatMessage** — Fade + slide-up entrance animation (`chatMessageIn` keyframe) on each new message render
 
 ---
 
@@ -258,7 +265,7 @@ AI-powered research platform with multi-provider RAG, sentence-level citation at
 
 **What `start.sh` does:**
 - Creates Python virtual environment (if not exists) and installs backend dependencies
-- Starts backend at `http://localhost:8000`
+- Starts backend at `http://localhost:8000` with `PYTHONUNBUFFERED=1` (ensures `[PIPELINE]` log lines appear immediately in `logs/backend.log`)
 - Installs frontend npm deps and starts Vite dev server at `http://localhost:5173`
 - Logs to `logs/backend.log` and `logs/frontend.log`
 - Stores PIDs in `.pids/` for clean shutdown
@@ -485,6 +492,7 @@ Run `backend/supabase_schema.sql` in your Supabase SQL Editor.
    - `tokens_used`, `response_time_ms`
    - `sources`, `citations`, `suggested_questions` (JSONB)
    - `intent`, `research_mode`, `created_at`
+   - `user_display_name`, `user_email` — snapshot of sender identity at message creation time
    - RLS: mirrors discussion ownership; public discussion messages readable by any authenticated user
 
 4. **document_formatted_chunks** — L2 format cache
@@ -583,7 +591,7 @@ cd frontend && npm install && npm run build
 **RAG not returning results**
 - Verify Pinecone index exists with name matching `PINECONE_INDEX_NAME` and dimension 1536
 - Confirm documents were uploaded successfully; check `backend/data/document_registry.json`
-- Try switching to Deep research mode for a broader score threshold (≥ 0.25)
+- Try switching to Exploratory research mode for a broader score threshold (≥ 0.25)
 
 **Streaming not working**
 - Verify Anthropic and Mistral API keys are valid and have sufficient quota
