@@ -242,4 +242,59 @@ All 3 providers and all 10 intents pick it up automatically. No other files chan
 - [ ] Mistral provider → spacing quirk rule still applies
 - [ ] "Continue" query → continuation response unaffected
 - [ ] Attachment query → no `[N]` markers, filenames referenced instead
-- [ ] (Optional debug) Log assembled system prompt and diff against pre-refactor output to confirm equivalence
+- [ ] (Optional debug) Log assembled system prompt and diff against pre-refactor output to confirm byte-for-byte equivalence
+
+---
+
+## Prompt Compliance Problem (Separate from Refactor)
+
+### What the refactor does and does not fix
+
+The refactor is an **architecture change**, not a content change. It centralizes the existing rules into one file. It fixes:
+
+- **Duplication**: the model currently receives citation policy twice per request — once from the provider system message, and again from `_CITATION_POLICY` appended via `intent_prompt`. This is noise that may dilute rule priority.
+- **Drift**: `base.py` is missing SYLLABUS RULE, VERBATIM TEST, and the 3-tier inference policy entirely. Any provider using `base.py` doesn't get those rules.
+
+It does **not** fix model compliance — the model receiving better-organized rules does not guarantee it follows them.
+
+### Observed failure mode
+
+On broad knowledge queries (e.g., "are carbon credits effective?"), the model:
+
+1. Answers from general training knowledge (correct, since the retrieved syllabi don't contain empirical data)
+2. Fabricates specific statistics: "EU ETS led to firm-level reductions of 10-15%", "only ~30% of voluntary carbon offsets were additional", "~20% of forest carbon credits were invalidated"
+3. Tags those fabricated statistics as `[1]` (a course syllabus) instead of `[AI]`
+4. Omits citation markers entirely from many sentences
+
+The rules that should have prevented this already exist in `claude_provider.py`:
+
+> "Specific numbers (percentages, dollar amounts, dates, counts) are almost never present in a course syllabus or summary source — tag them [AI] unless you can read them verbatim in the source text provided"
+
+> "Before tagging any statement as [N], ask: 'Can I find this specific claim in the source text above?'"
+
+The model reads these rules and ignores them on broad knowledge queries.
+
+### Why it happens
+
+When the query outpaces the retrieved sources (syllabi reference topics but don't contain underlying data), the model defaults to answering from training knowledge. It then retrofits `[N]` citations from whichever source mentioned the topic — violating the VERBATIM TEST — rather than using `[AI]`. This is a consistent pattern: the model prioritizes appearing well-sourced over accurate attribution.
+
+### Levers to improve compliance
+
+Reorganizing where the rules live (the refactor) is a prerequisite for any of the following, but is not sufficient on its own:
+
+1. **Failure-mode examples in the prompt**: Add a negative example showing exactly what went wrong:
+   ```
+   ✗ WRONG: "The EU ETS reduced firm-level emissions by 10-15%. [1]"
+     → [1] is a course syllabus. Syllabi do not contain this number.
+   ✓ CORRECT: "The EU ETS reduced firm-level emissions by 10-15%. [AI]"
+   ```
+   Negative examples (showing the forbidden pattern) are consistently more effective than positive-only examples for compliance.
+
+2. **Stricter Tier 1 framing**: Rephrase "inference prohibited" as an explicit prohibition on generating stats:
+   > "NEVER generate a percentage, dollar amount, date, or count unless you can copy it verbatim from the source text above. If the source only mentions the topic without the number, write the claim and mark it [AI]."
+
+3. **Model selection**: Claude Sonnet follows instruction prompts more reliably than Mistral Large on multi-rule compliance tasks. If citation quality is a product priority, provider selection matters.
+
+### Where to implement
+
+All three levers above require editing `VERBATIM_TEST` and `ATTRIBUTION_RULES` in `citation_policy.py` (post-refactor). Pre-refactor, the same changes would need to be made in `claude_provider.py`, `mistral_provider.py`, and `base.py` separately — which is exactly why the refactor is a prerequisite.
