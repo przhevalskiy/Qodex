@@ -1,10 +1,8 @@
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BadgePlus, Paperclip, X, FileText, ImageIcon, Upload, Check } from 'lucide-react';
+import { BadgePlus, Paperclip, X, FileText, ImageIcon, Upload } from 'lucide-react';
 import { useAttachmentStore } from '@/features/attachments/store';
 import { useDiscussionStore } from '@/features/discussions';
-import { useResearchModeStore, RESEARCH_MODE_UI } from '@/features/research';
-import { ResearchMode } from '@/shared/types';
 import './InputActionsDropdown.css';
 
 const ALLOWED_TYPES = [
@@ -28,16 +26,7 @@ export function InputActionsDropdown() {
   const [error, setError] = useState<string | null>(null);
 
   const { activeDiscussionId, createDiscussion } = useDiscussionStore();
-
-  const {
-    attachments,
-    isUploading,
-    uploadProgress,
-    uploadAttachment,
-    deleteAttachment,
-  } = useAttachmentStore();
-
-  const { activeMode, setActiveMode, modes } = useResearchModeStore();
+  const { attachments, isUploading, uploadProgress, uploadAttachment, deleteAttachment } = useAttachmentStore();
 
   const validateFile = (file: File): boolean => {
     const extension = '.' + file.name.split('.').pop()?.toLowerCase();
@@ -52,7 +41,6 @@ export function InputActionsDropdown() {
     return true;
   };
 
-  /** Ensure a discussion exists, auto-creating + navigating if needed. */
   const ensureDiscussion = async (): Promise<string> => {
     if (activeDiscussionId) return activeDiscussionId;
     const newDiscussion = await createDiscussion();
@@ -62,12 +50,9 @@ export function InputActionsDropdown() {
 
   const handleFileSelect = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
-
     setError(null);
     const file = files[0];
-
     if (!validateFile(file)) return;
-
     try {
       const discussionId = await ensureDiscussion();
       await uploadAttachment(discussionId, file);
@@ -81,15 +66,6 @@ export function InputActionsDropdown() {
     e.preventDefault();
     setIsDragging(false);
     handleFileSelect(e.dataTransfer.files);
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = () => {
-    setIsDragging(false);
   };
 
   const handleAttachFiles = () => {
@@ -111,14 +87,8 @@ export function InputActionsDropdown() {
     }
   };
 
-  const handleModeSelect = (mode: ResearchMode) => {
-    setActiveMode(mode);
-    setIsOpen(false);
-  };
-
   return (
     <div className="input-actions">
-      {/* Main trigger button */}
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
@@ -139,12 +109,10 @@ export function InputActionsDropdown() {
         style={{ display: 'none' }}
       />
 
-      {/* Dropdown menu */}
       {isOpen && (
         <>
           <div className="input-actions-backdrop" onClick={() => setIsOpen(false)} />
           <div className="input-actions-dropdown">
-            {/* File attachment option */}
             <button
               type="button"
               className="input-actions-item"
@@ -159,36 +127,10 @@ export function InputActionsDropdown() {
                 <span className="input-actions-item-count">{attachments.length}</span>
               )}
             </button>
-
-            <div className="input-actions-divider" />
-
-            {/* Research mode section */}
-            {modes.map((mode) => {
-              const config = RESEARCH_MODE_UI[mode.mode];
-              const Icon = config.icon;
-              const isActive = mode.mode === activeMode;
-
-              return (
-                <button
-                  key={mode.mode}
-                  type="button"
-                  className={`input-actions-item input-actions-research-item ${isActive ? 'active' : ''}`}
-                  onClick={() => handleModeSelect(mode.mode)}
-                >
-                  <Icon size={18} />
-                  <div className="input-actions-item-content">
-                    <span className="input-actions-item-label">{config.label}</span>
-                    <span className="input-actions-item-desc">{config.description}</span>
-                  </div>
-                  {isActive && <Check size={16} className="input-actions-check" />}
-                </button>
-              );
-            })}
           </div>
         </>
       )}
 
-      {/* Attachments panel */}
       {showAttachments && attachments.length > 0 && (
         <>
           <div className="input-actions-backdrop" onClick={() => setShowAttachments(false)} />
@@ -214,8 +156,8 @@ export function InputActionsDropdown() {
 
             <div
               onDrop={handleDrop}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
+              onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+              onDragLeave={() => setIsDragging(false)}
               className={`input-actions-dropzone ${isDragging ? 'dragging' : ''}`}
               onClick={() => fileInputRef.current?.click()}
             >
@@ -226,19 +168,14 @@ export function InputActionsDropdown() {
         </>
       )}
 
-      {/* Upload Progress */}
       {isUploading && uploadProgress > 0 && (
         <div className="input-actions-progress">
           <div className="input-actions-progress-bar">
-            <div
-              className="input-actions-progress-fill"
-              style={{ width: `${uploadProgress}%` }}
-            />
+            <div className="input-actions-progress-fill" style={{ width: `${uploadProgress}%` }} />
           </div>
         </div>
       )}
 
-      {/* Error message */}
       {error && (
         <div className="input-actions-error">
           {error}

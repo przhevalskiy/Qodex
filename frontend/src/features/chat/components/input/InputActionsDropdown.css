@@ -46,27 +46,6 @@
   justify-content: center;
 }
 
-/* Research mode indicator pill */
-.input-actions-mode-indicator {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--gray-600);
-  background-color: var(--gray-100);
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.input-actions-mode-indicator:hover {
-  background-color: var(--gray-200);
-  color: var(--gray-800);
-}
-
 /* Backdrop */
 .input-actions-backdrop {
   position: fixed;
@@ -108,17 +87,9 @@
   background-color: var(--gray-50);
 }
 
-.input-actions-item.active {
-  background-color: var(--brand-50);
-}
-
 .input-actions-item svg:first-child {
   color: var(--gray-500);
   flex-shrink: 0;
-}
-
-.input-actions-item.active svg:first-child {
-  color: var(--brand-600);
 }
 
 .input-actions-item-content {
@@ -139,10 +110,6 @@
   color: var(--gray-500);
 }
 
-.input-actions-research-item .input-actions-item-desc {
-  font-size: 11px;
-}
-
 .input-actions-item-count {
   font-size: 11px;
   font-weight: 600;
@@ -150,28 +117,6 @@
   background-color: var(--brand-50);
   padding: 2px 8px;
   border-radius: 10px;
-}
-
-.input-actions-check {
-  color: var(--brand-600);
-  flex-shrink: 0;
-}
-
-/* Section Divider */
-.input-actions-divider {
-  height: 1px;
-  background-color: var(--gray-100);
-  margin: 6px 0;
-}
-
-/* Section Label */
-.input-actions-section-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--gray-400);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  padding: 8px 12px 4px;
 }
 
 /* Documents Panel */
@@ -237,13 +182,6 @@
 
 .input-actions-doc-item.selected {
   background-color: var(--brand-50);
-}
-
-.input-actions-doc-item input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--brand-600);
-  cursor: pointer;
 }
 
 .input-actions-doc-item svg {

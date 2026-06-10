@@ -1,14 +1,10 @@
 import { useState, useEffect } from 'react';
 import './ThinkingIndicator.css';
 
-const PHRASES = ['Thinking', 'Threading', 'Qodexing'];
+const PHRASES = ['Thinking', 'Processing', 'Working'];
 const CYCLE_MS = 2400;
 
-interface ThinkingIndicatorProps {
-  provider?: string;
-}
-
-export function ThinkingIndicator({ provider }: ThinkingIndicatorProps) {
+export function ThinkingIndicator() {
   const [index, setIndex] = useState(0);
   const [fading, setFading] = useState(false);
 

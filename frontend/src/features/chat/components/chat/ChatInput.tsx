@@ -4,10 +4,9 @@ import { ArrowUp, Square } from 'lucide-react';
 import { useSSE } from '@/shared/hooks/useSSE';
 import { useChatStore } from '@/features/chat';
 import { useDiscussionStore } from '@/features/discussions';
-import { ProviderToggles } from '@/features/providers';
 import { InputActionsDropdown } from '../input/InputActionsDropdown';
 import { VoiceInput } from '../ui/VoiceInput';
-import { PromptWizardModal, detectWizardIntent, detectRole, resolveConfigKey, buildEnrichedMessage } from '../modals/PromptWizardModal';
+import { PromptWizardModal, detectWizardIntent } from '../modals/PromptWizardModal';
 import './ChatInput.css';
 
 interface ChatInputProps {
@@ -21,7 +20,6 @@ export function ChatInput({ initialValue = '', onValueChange, placeholder }: Cha
   const navigate = useNavigate();
   const [input, setInput] = useState(initialValue);
   const [wizardIntent, setWizardIntent] = useState<string | null>(null);
-  const [wizardConfigKey, setWizardConfigKey] = useState<string>('');
   const [pendingMessage, setPendingMessage] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { sendMessage, stopStream, isStreaming } = useSSE();
@@ -29,9 +27,7 @@ export function ChatInput({ initialValue = '', onValueChange, placeholder }: Cha
   const { skipNextMessageLoad } = useChatStore();
 
   useEffect(() => {
-    if (initialValue !== input) {
-      setInput(initialValue);
-    }
+    if (initialValue !== input) setInput(initialValue);
   }, [initialValue]);
 
   useEffect(() => {
@@ -60,7 +56,7 @@ export function ChatInput({ initialValue = '', onValueChange, placeholder }: Cha
     onValueChange?.('');
 
     try {
-      await sendMessage(message, undefined, discussionId);
+      await sendMessage(message, discussionId);
     } catch (error) {
       console.error('Failed to send message:', error);
       const errorMessage = (error as Error).message || '';
@@ -68,7 +64,7 @@ export function ChatInput({ initialValue = '', onValueChange, placeholder }: Cha
         try {
           const newDiscussion = await createDiscussion();
           navigate(`/chat/${newDiscussion.id}`);
-          await sendMessage(message, undefined, newDiscussion.id);
+          await sendMessage(message, newDiscussion.id);
         } catch (retryError) {
           console.error('Failed to recover:', retryError);
           setInput(message);
@@ -83,34 +79,22 @@ export function ChatInput({ initialValue = '', onValueChange, placeholder }: Cha
 
   const handleSubmit = async (e?: FormEvent) => {
     e?.preventDefault();
-
     const message = input.trim();
     if (!message || isStreaming) return;
 
     const intent = detectWizardIntent(message);
-    if (intent) {
-      const role = detectRole(message);
-      const configKey = resolveConfigKey(intent, role);
-      if (configKey) {
-        setPendingMessage(message);
-        setWizardIntent(intent);
-        setWizardConfigKey(configKey);
-        return;
-      }
+    if (intent && intent !== 'media') {
+      setPendingMessage(message);
+      setWizardIntent(intent);
+      return;
     }
 
     await doSend(message);
   };
 
-  const handleWizardComplete = async (answers: string[]) => {
+  const handleWizardComplete = async (enriched: string) => {
     setWizardIntent(null);
-    const enriched = buildEnrichedMessage(pendingMessage, wizardConfigKey, answers);
     await doSend(enriched);
-  };
-
-  const handleWizardSkipStep = async () => {
-    setWizardIntent(null);
-    await doSend(pendingMessage);
   };
 
   const handleWizardDismiss = () => {
@@ -130,11 +114,12 @@ export function ChatInput({ initialValue = '', onValueChange, placeholder }: Cha
     <div className="chat-input">
       <PromptWizardModal
         isOpen={!!wizardIntent}
-        configKey={wizardConfigKey}
+        intent={wizardIntent || ''}
+        originalMessage={pendingMessage}
         onComplete={handleWizardComplete}
-        onSkipStep={handleWizardSkipStep}
         onDismiss={handleWizardDismiss}
       />
+
       <form className="chat-input-form" onSubmit={handleSubmit}>
         <div className="chat-input-box">
           <InputActionsDropdown />
@@ -144,13 +129,11 @@ export function ChatInput({ initialValue = '', onValueChange, placeholder }: Cha
             value={input}
             onChange={(e) => handleInputChange(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={hoverPlaceholder || placeholder || "Ask anything..."}
+            placeholder={hoverPlaceholder || placeholder || "Describe your communications request..."}
             disabled={isStreaming}
             rows={1}
             className="chat-textarea"
           />
-
-          <ProviderToggles />
 
           <VoiceInput
             onTranscript={(text) => {
@@ -164,21 +147,11 @@ export function ChatInput({ initialValue = '', onValueChange, placeholder }: Cha
           />
 
           {isStreaming ? (
-            <button
-              type="button"
-              className="send-btn stop"
-              onClick={stopStream}
-              title="Stop generating"
-            >
+            <button type="button" className="send-btn stop" onClick={stopStream} title="Stop generating">
               <Square size={16} />
             </button>
           ) : (
-            <button
-              type="submit"
-              className="send-btn"
-              disabled={!input.trim()}
-              title="Send message"
-            >
+            <button type="submit" className="send-btn" disabled={!input.trim()} title="Send message">
               <ArrowUp size={18} />
             </button>
           )}
