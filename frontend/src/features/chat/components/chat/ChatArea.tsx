@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { ArrowUpRight, X, FileText, Calendar, Newspaper, Share2, Lightbulb, MessageCircle, Globe } from 'lucide-react';
 import { useChatStore } from '../../store';
 import { useDiscussionStore } from '@/features/discussions';
-import { useProviderStore } from '@/features/providers';
 import { useAuthStore } from '@/features/auth';
 import { useSSE } from '@/shared/hooks/useSSE';
 import { ChatMessage } from './ChatMessage';
@@ -9,13 +9,9 @@ import { ChatInput } from './ChatInput';
 import { ChatHeader } from './ChatHeader';
 import { RotatingText } from '../ui/RotatingText';
 import { ThinkingIndicator } from '../ui/ThinkingIndicator';
-import { DocumentPreviewModal } from '../modals/DocumentPreviewModal';
-import { FilePreviewModal } from '../attachments/FilePreviewModal';
-import { FileText, BookOpen, FlaskConical, Users, Video, Lightbulb, Microscope, BookMarked, GraduationCap, ArrowUpRight, X } from 'lucide-react';
+import { ChibiAvatars } from '../ui/ChibiAvatars';
 import './ChatArea.css';
 
-// Continuously pins scroll to the bottom during streaming using requestAnimationFrame.
-// Returns a start/stop handle — call start() when streaming begins, stop() when done.
 function useRafScroll(containerRef: React.RefObject<HTMLDivElement | null>) {
   const rafRef = useRef<number | null>(null);
 
@@ -49,24 +45,18 @@ export function ChatArea({ initialMessage }: ChatAreaProps) {
   const [hoverPrompt, setHoverPrompt] = useState('');
   const prevDiscussionIdRef = useRef<string | null>(null);
   const hasAutoSentRef = useRef(false);
-  const { messages, isStreaming, currentStreamContent, currentStreamProvider, currentStreamSources, currentStreamSuggestedQuestions, currentStreamIntent, currentStreamIsContinuation, loadMessagesForDiscussion } =
-    useChatStore();
 
+  const { messages, isStreaming, isSubmitted, currentStreamContent, currentStreamIntent, loadMessagesForDiscussion } = useChatStore();
   const { activeDiscussionId, discussions } = useDiscussionStore();
-  const { fetchProviders } = useProviderStore();
   const { sendMessage } = useSSE();
   const { start: startRafScroll, stop: stopRafScroll } = useRafScroll(messagesContainerRef);
 
-  // Get current discussion for header and title
   const currentDiscussion = discussions.find(d => d.id === activeDiscussionId);
 
-  // Handler for retrying a message - finds the preceding user message and re-sends it
   const handleRetry = useCallback(
     (messageId: string) => {
       const messageIndex = messages.findIndex((m) => m.id === messageId);
       if (messageIndex <= 0) return;
-
-      // Find the preceding user message
       for (let i = messageIndex - 1; i >= 0; i--) {
         if (messages[i].role === 'user') {
           sendMessage(messages[i].content);
@@ -77,20 +67,11 @@ export function ChatArea({ initialMessage }: ChatAreaProps) {
     [messages, sendMessage]
   );
 
-  // Handler for clicking suggested questions
   const handleQuestionClick = useCallback(
-    (question: string) => {
-      sendMessage(question);
-    },
+    (question: string) => sendMessage(question),
     [sendMessage]
   );
 
-  useEffect(() => {
-    fetchProviders();
-  }, [fetchProviders]);
-
-  // Load messages ONLY when switching to a different discussion
-  // Don't reload if staying in the same discussion (prevents overwriting streaming state)
   useEffect(() => {
     if (prevDiscussionIdRef.current !== activeDiscussionId) {
       loadMessagesForDiscussion(activeDiscussionId);
@@ -98,16 +79,10 @@ export function ChatArea({ initialMessage }: ChatAreaProps) {
     }
   }, [activeDiscussionId, loadMessagesForDiscussion]);
 
-  // Update browser title based on discussion
   useEffect(() => {
-    if (activeDiscussionId && currentDiscussion) {
-      document.title = currentDiscussion.title || 'Qodex';
-    } else {
-      document.title = 'Qodex';
-    }
-  }, [activeDiscussionId, currentDiscussion]);
+    document.title = currentDiscussion?.title || 'Cowork';
+  }, [currentDiscussion]);
 
-  // Start rAF scroll loop when streaming, stop and snap to bottom when done
   useEffect(() => {
     if (isStreaming) {
       startRafScroll();
@@ -118,56 +93,33 @@ export function ChatArea({ initialMessage }: ChatAreaProps) {
     return () => stopRafScroll();
   }, [isStreaming, startRafScroll, stopRafScroll]);
 
-  // Auto-send initial message from sample questions
   useEffect(() => {
-    // Reset the ref when initialMessage changes to allow new auto-sends
-    if (initialMessage) {
-      console.log('Initial message received:', initialMessage);
-      hasAutoSentRef.current = false;
-    }
+    if (initialMessage) hasAutoSentRef.current = false;
   }, [initialMessage]);
 
   useEffect(() => {
-    console.log('Auto-send check:', {
-      initialMessage,
-      hasAutoSent: hasAutoSentRef.current,
-      isStreaming,
-      messageCount: messages.length
-    });
     if (initialMessage && !hasAutoSentRef.current && !isStreaming && messages.length === 0) {
-      console.log('Auto-sending message:', initialMessage);
       hasAutoSentRef.current = true;
       sendMessage(initialMessage);
     }
   }, [initialMessage, isStreaming, messages.length, sendMessage]);
 
-  const handleQuickAction = (prompt: string) => {
-    sendMessage(prompt);
-  };
-
-  // Stabilize the streaming message object so it only recalculates when
-  // its actual data changes, not on every ChatArea re-render.
   const streamingMessage = useMemo(() => {
     if (!isStreaming || !currentStreamContent) return null;
     return {
       id: 'streaming',
       content: currentStreamContent,
       role: 'assistant' as const,
-      provider: currentStreamProvider || undefined,
       timestamp: '',
-      sources: currentStreamSources.length > 0 ? currentStreamSources : undefined,
-      suggested_questions: currentStreamSuggestedQuestions.length > 0 ? currentStreamSuggestedQuestions : undefined,
       intent: currentStreamIntent?.intent || undefined,
-      is_continuation: currentStreamIsContinuation || undefined,
     };
-  }, [isStreaming, currentStreamContent, currentStreamProvider, currentStreamSources, currentStreamSuggestedQuestions, currentStreamIntent, currentStreamIsContinuation]);
+  }, [isStreaming, currentStreamContent, currentStreamIntent]);
 
   const isEmpty = messages.length === 0 && !isStreaming;
 
   return (
     <div className={`chat-area ${isEmpty ? 'empty' : ''}`}>
       {isEmpty ? (
-        /* Centered layout when empty - like Copilot */
         <>
           <EmptyState />
           <div className="chat-input-container">
@@ -179,17 +131,14 @@ export function ChatArea({ initialMessage }: ChatAreaProps) {
               />
             </div>
           </div>
-          <QuickActions onSelectAction={handleQuickAction} onHoverPrompt={setHoverPrompt} />
+          <QuickActions onSelectAction={sendMessage} onHoverPrompt={setHoverPrompt} />
         </>
       ) : (
-        /* Normal layout with messages */
         <>
-          {/* Show header only when there's an active discussion */}
           {activeDiscussionId && currentDiscussion && (
             <ChatHeader
               discussionId={activeDiscussionId}
               discussionTitle={currentDiscussion.title}
-              isPublic={currentDiscussion.is_public}
             />
           )}
 
@@ -201,12 +150,12 @@ export function ChatArea({ initialMessage }: ChatAreaProps) {
                   message={message}
                   onRetry={() => handleRetry(message.id)}
                   onQuestionClick={handleQuestionClick}
-                  onContinue={message.is_truncated ? () => sendMessage('continue') : undefined}
+                  onSend={sendMessage}
                 />
               ))}
 
               {isStreaming && !currentStreamContent && (
-                <ThinkingIndicator provider={currentStreamProvider || undefined} />
+                <ThinkingIndicator />
               )}
 
               {streamingMessage && (
@@ -221,6 +170,17 @@ export function ChatArea({ initialMessage }: ChatAreaProps) {
             </div>
           </div>
 
+          {isSubmitted && (
+            <div className="chat-input-container" style={{ paddingBottom: 0 }}>
+              <div className="chat-input-wrapper">
+                <div className="submit-success-banner">
+                  <span className="submit-success-icon">✓</span>
+                  <span>Your request has been submitted to the marketing team.</span>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="chat-input-container">
             <div className="chat-input-wrapper">
               <ChatInput
@@ -231,12 +191,6 @@ export function ChatArea({ initialMessage }: ChatAreaProps) {
           </div>
         </>
       )}
-
-      {/* Document Preview Modal */}
-      <DocumentPreviewModal />
-
-      {/* Attachment File Preview Modal */}
-      <FilePreviewModal />
     </div>
   );
 }
@@ -267,9 +221,7 @@ function QuickActions({ onSelectAction, onHoverPrompt }: QuickActionsProps) {
         closeSubmenu();
       }
     }
-    if (openActionId) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
+    if (openActionId) document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [openActionId, closeSubmenu]);
 
@@ -279,111 +231,87 @@ function QuickActions({ onSelectAction, onHoverPrompt }: QuickActionsProps) {
 
   const quickActions = [
     {
-      id: 'case-studies',
+      id: 'press-release',
       icon: FileText,
-      label: 'Case studies',
+      label: 'Press release',
       subPrompts: [
-        'What case studies are available on leadership and decision-making?',
-        'Find case studies that deal with organizational change',
-        'Are there any case studies covering supply chain management?',
-        'What case studies explore business ethics and corporate governance?',
-        'Summarize the key lessons from the available case studies on strategy',
+        'I need help with a press release for our upcoming product launch',
+        'We have a major partnership announcement and need a press release',
+        'Draft a press release for an executive appointment or leadership change',
+        'We need a press release for a funding or investment announcement',
+        'Help me write a press release for a new initiative or program launch',
       ],
     },
     {
-      id: 'course-readings',
-      icon: BookOpen,
-      label: 'Course readings',
+      id: 'events',
+      icon: Calendar,
+      label: 'Events',
       subPrompts: [
-        'What readings cover sustainable business practices?',
-        'Which materials introduce students to financial modeling?',
-        'What foundational texts are available on organizational behavior?',
-        'Find readings suitable for a first-year MBA module on strategy',
-        'What readings cover the latest research in entrepreneurship?',
+        'We have a conference coming up and need full communications support',
+        'Help me write event invitation copy and email outreach',
+        'We\'re hosting a webinar and need talking points and social copy',
+        'I need a post-event recap and media summary',
+        'Help me plan communications for a panel discussion or speaker series',
       ],
     },
     {
-      id: 'simulations',
-      icon: FlaskConical,
-      label: 'Simulations',
+      id: 'media-pr',
+      icon: Newspaper,
+      label: 'Media & PR',
       subPrompts: [
-        'Are there any simulations or interactive exercises for negotiation?',
-        'What simulations are available for teaching supply chain dynamics?',
-        'Are there crisis management simulations in the library?',
-        'What interactive exercises work well for teaching game theory?',
-        'Are there any role-play simulations for leadership development?',
+        'Can you help me put together a PR pitch for a journalist?',
+        'I need a media kit for an upcoming announcement',
+        'Help me draft a spokesperson bio and boilerplate for a press kit',
+        'We need talking points to prepare an executive for media interviews',
+        'I need a Q&A document for handling press inquiries',
       ],
     },
     {
-      id: 'faculty-expertise',
-      icon: Users,
-      label: 'Faculty expertise',
+      id: 'social-media',
+      icon: Share2,
+      label: 'Social media',
       subPrompts: [
-        'Which faculty are teaching strategy and competitive advantage?',
-        'Who has expertise in sustainable business and ESG?',
-        'Which faculty specialize in entrepreneurship and innovation?',
-        'Who are the leading researchers in organizational behavior?',
-        'Which faculty cover digital transformation in their courses?',
+        'I need social media copy for a campaign or initiative',
+        'Help me write a LinkedIn post announcing a new partnership',
+        'I need social media posts for LinkedIn and Instagram for an upcoming event',
+        'We need social content to promote a research report or publication',
+        'Create an Instagram caption and copy for a brand moment',
       ],
     },
     {
-      id: 'video-resources',
-      icon: Video,
-      label: 'Video resources',
-      subPrompts: [
-        'Are there any videos or multimedia resources about leadership?',
-        'What video content covers financial markets and investing?',
-        'Are there documentary-style videos on business case studies?',
-        'What multimedia resources are available on design thinking?',
-        'Are there recorded lectures or talks on entrepreneurship?',
-      ],
-    },
-    {
-      id: 'lesson-plans',
+      id: 'thought-leadership',
       icon: Lightbulb,
-      label: 'Lesson plans',
+      label: 'Thought leadership',
       subPrompts: [
-        'I need some ideas for a lesson plan on stakeholder theory',
-        'Help me design a session on business ethics and decision-making',
-        'What\'s a good structure for a lesson on corporate strategy?',
-        'Give me ideas for a workshop on innovation and creativity',
-        'How should I structure a class on negotiation skills?',
+        'I need help drafting an op-ed or thought leadership piece',
+        'Help me outline a byline article for a trade publication',
+        'I want to develop a speech or keynote remarks for an executive',
+        'Draft a LinkedIn article on a topic relevant to our organization',
+        'Help me create a white paper or research brief for external audiences',
       ],
     },
     {
-      id: 'research-methods',
-      icon: Microscope,
-      label: 'Research methods',
+      id: 'web-services',
+      icon: Globe,
+      label: 'Web services',
       subPrompts: [
-        'How are other instructors teaching qualitative research methods?',
-        'What approaches work best for teaching data analysis to MBAs?',
-        'How do leading schools teach case-based learning?',
-        'What are effective ways to teach literature review and synthesis?',
-        'How are instructors incorporating AI tools into research methods courses?',
+        'We need a new webpage or site section built out for a program or initiative',
+        'I have a feature request for our website — new functionality or UI change',
+        'We need a web analytics report on traffic, engagement, or campaign performance',
+        'I want an SEO audit and optimization consultation for our website',
+        'Help me write a brief for a website redesign or content refresh',
       ],
     },
     {
-      id: 'best-practices',
-      icon: BookMarked,
-      label: 'Best practices',
+      id: 'general',
+      icon: MessageCircle,
+      label: 'General request',
       subPrompts: [
-        'What are the best practices for teaching large MBA cohorts?',
-        'How do top business schools structure case study discussions?',
-        'What are proven methods for increasing student engagement?',
-        'What are best practices for designing group projects and assessments?',
-        'How do effective instructors give feedback on student work?',
-      ],
-    },
-    {
-      id: 'course-examples',
-      icon: GraduationCap,
-      label: 'Course examples',
-      subPrompts: [
-        'Show me example syllabi that cover corporate strategy',
-        'What does a well-structured entrepreneurship course look like?',
-        'Are there example course designs for a leadership module?',
-        'Show me how other instructors structure a business ethics course',
-        'What does a typical MBA operations management syllabus cover?',
+        'I have a general communications request for the marketing team',
+        'We need help with internal communications for a company-wide announcement',
+        'Help me put together a briefing document for a stakeholder meeting',
+        'I need talking points for a presentation or town hall',
+        'Draft a newsletter update for our community or alumni network',
       ],
     },
   ];
@@ -423,10 +351,7 @@ function QuickActions({ onSelectAction, onHoverPrompt }: QuickActionsProps) {
                 key={i}
                 className="quick-actions-submenu-item"
                 onMouseEnter={() => onHoverPrompt(prompt)}
-                onClick={() => {
-                  onSelectAction(prompt);
-                  closeSubmenu();
-                }}
+                onClick={() => { onSelectAction(prompt); closeSubmenu(); }}
               >
                 <span>{prompt}</span>
                 <ArrowUpRight size={14} className="quick-actions-submenu-arrow" />
@@ -446,22 +371,21 @@ function EmptyState() {
 
   return (
     <div className="empty-state">
+      <ChibiAvatars />
       {firstName && (
         <p className="empty-state-greeting">Hi {firstName},</p>
       )}
       <h1 className="empty-state-title">
         <RotatingText
           texts={[
-            "What can I help you find?",
-            "What teaching ideas can I help spark?",
-            "What would you like to discover?",
-            "How can I support your teaching today?",
-            "What's worth exploring today?",
+            "What can I help you submit today?",
+            "Ready to take your next intake request?",
+            "What communications project can I help with?",
+            "How can I support your marketing team today?",
           ]}
           interval={4500}
         />
       </h1>
-
     </div>
   );
 }

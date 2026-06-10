@@ -1,19 +1,18 @@
 import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { SquarePen, MessageSquare, MessageCirclePlus, Settings, User, Trash2, PanelLeftClose, PanelLeft, MoreVertical, MoreHorizontal, ArrowUpDown, Download, Check, Copy, LogOut, Sparkles, Compass, GraduationCap, Mail, Globe, ChevronRight, Menu, X } from 'lucide-react';
+import { SquarePen, MessageCirclePlus, Settings, User, Trash2, PanelLeftClose, PanelLeft, MoreVertical, MoreHorizontal, ArrowUpDown, Check, Copy, LogOut, Sparkles, Mail, Globe, ChevronRight, Menu, X, BookOpen, FileText } from 'lucide-react';
 import { getAvatarIcon } from '@/shared/constants/avatarIcons';
 import { useDiscussionStore } from '@/features/discussions';
 import { useChatStore } from '@/features/chat';
 import { useAuthStore } from '@/features/auth';
 import { Discussion } from '@/shared/types';
-import logo from '../../assets/qodex-logo.png';
+import logo from '../../assets/logo.png';
 import { SampleQuestionsDropdown } from './SampleQuestionsDropdown';
-import { exportHistoryToPDF } from '@/shared/services/pdfExport';
 import { ContactModal } from './ContactModal';
 import { AccountSettingsModal } from './AccountSettingsModal';
 import { DeleteAllModal } from './DeleteAllModal';
-import { SAMPLE_QUESTIONS } from '@/shared/constants/sampleQuestions';
+import { TRACK_STARTERS } from '@/shared/constants/sampleQuestions';
 import './Sidebar.css';
 
 export function Sidebar() {
@@ -96,11 +95,6 @@ export function Sidebar() {
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
   }, [showConversationsMenu]);
-
-  const handleExportHistory = () => {
-    setShowConversationsMenu(false);
-    exportHistoryToPDF(discussions);
-  };
 
   const handleNewChat = () => {
     // Navigate to empty chat - discussion will be created when user sends first message
@@ -202,7 +196,7 @@ export function Sidebar() {
       {/* Header */}
       <div className="sidebar-header">
         <div className="sidebar-logo">
-          <img src={logo} alt="Qodex" className="sidebar-logo-img" />
+          {!isCollapsed && <span className="sidebar-logo-wordmark">Cowork</span>}
         </div>
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
@@ -223,14 +217,14 @@ export function Sidebar() {
           <SquarePen size={18} />
           {!isCollapsed && <span>New Chat</span>}
         </button>
-        <a href="https://openclimatecurriculum.org/explore/" target="_blank" rel="noopener noreferrer" className="sidebar-nav-link">
-          <Compass size={18} />
-          {!isCollapsed && <span>Explore</span>}
-        </a>
-        <a href="https://openclimatecurriculum.org/educators/" target="_blank" rel="noopener noreferrer" className="sidebar-nav-link">
-          <GraduationCap size={18} />
-          {!isCollapsed && <span>Educators</span>}
-        </a>
+        <button className="sidebar-nav-link" onClick={() => window.open('https://hive.com', '_blank')}>
+          <BookOpen size={18} />
+          {!isCollapsed && <span>Resources</span>}
+        </button>
+        <button className="sidebar-nav-link" onClick={() => window.open('https://hive.com', '_blank')}>
+          <FileText size={18} />
+          {!isCollapsed && <span>Guidelines</span>}
+        </button>
         <button className="sidebar-nav-link" onClick={() => setShowContactModal(true)}>
           <Mail size={18} />
           {!isCollapsed && <span>Contact</span>}
@@ -259,10 +253,6 @@ export function Sidebar() {
                     <ArrowUpDown size={14} />
                     <span>{sortOrder === 'newest' ? 'Oldest first' : 'Newest first'}</span>
                   </button>
-                  <button className="conversations-menu-item" onClick={handleExportHistory}>
-                    <Download size={14} />
-                    <span>Export history</span>
-                  </button>
                   <button className="conversations-menu-item delete" onClick={() => { setShowConversationsMenu(false); setShowDeleteAllModal(true); }}>
                     <Trash2 size={14} />
                     <span>Delete all</span>
@@ -289,13 +279,13 @@ export function Sidebar() {
                 <div className="sidebar-start-journey-container" ref={sampleQuestionsRef}>
                   <button className="sidebar-start-journey-btn" onClick={() => setShowSampleQuestions(!showSampleQuestions)}>
                     <Sparkles size={16} />
-                    <span>Start a new journey</span>
+                    <span>New request</span>
                   </button>
                   <SampleQuestionsDropdown
                     isOpen={showSampleQuestions}
                     onToggle={() => setShowSampleQuestions(!showSampleQuestions)}
                     onQuestionSelect={handleSampleQuestionSelect}
-                    questions={SAMPLE_QUESTIONS}
+                    questions={TRACK_STARTERS}
                     isCollapsed={isCollapsed}
                   />
                 </div>
@@ -313,7 +303,7 @@ export function Sidebar() {
                   isOpen={showSampleQuestions}
                   onToggle={() => setShowSampleQuestions(!showSampleQuestions)}
                   onQuestionSelect={handleSampleQuestionSelect}
-                  questions={SAMPLE_QUESTIONS}
+                  questions={TRACK_STARTERS}
                   isCollapsed={isCollapsed}
                 />
               </div>

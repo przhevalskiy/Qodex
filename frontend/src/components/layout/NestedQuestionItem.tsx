@@ -18,7 +18,6 @@ export function NestedQuestionItem({ question, onQuestionSelect }: NestedQuestio
   const subMenuRef = useRef<HTMLDivElement>(null);
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // After submenu renders, measure its actual height and reposition if it would overflow
   useLayoutEffect(() => {
     if (showSubMenu && itemRef.current && subMenuRef.current) {
       const rect = itemRef.current.getBoundingClientRect();
@@ -28,13 +27,11 @@ export function NestedQuestionItem({ question, onQuestionSelect }: NestedQuestio
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
 
-      // Horizontal: prefer right, fall back to left
       let left = rect.right + gap;
       if (left + menuWidth > viewportWidth) {
         left = rect.left - menuWidth - gap;
       }
 
-      // Vertical: align top with item, but clamp so bottom doesn't overflow
       let top = rect.top;
       if (top + menuHeight > viewportHeight - 8) {
         top = viewportHeight - menuHeight - 8;
@@ -45,19 +42,13 @@ export function NestedQuestionItem({ question, onQuestionSelect }: NestedQuestio
   }, [showSubMenu]);
 
   const handleMouseEnter = () => {
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
-    }
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
     setHoverPlaceholder(question.main);
-    hoverTimeoutRef.current = setTimeout(() => {
-      setShowSubMenu(true);
-    }, 150);
+    hoverTimeoutRef.current = setTimeout(() => setShowSubMenu(true), 150);
   };
 
   const handleMouseLeave = () => {
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
-    }
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
     setHoverPlaceholder('');
     hoverTimeoutRef.current = setTimeout(() => {
       setShowSubMenu(false);
@@ -66,16 +57,11 @@ export function NestedQuestionItem({ question, onQuestionSelect }: NestedQuestio
   };
 
   const handleSubMenuMouseEnter = () => {
-    // Cancel any pending close timeout when entering sub-menu
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
-    }
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
   };
 
   const handleSubMenuMouseLeave = () => {
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
-    }
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
     setHoverPlaceholder('');
     hoverTimeoutRef.current = setTimeout(() => {
       setShowSubMenu(false);
@@ -93,12 +79,9 @@ export function NestedQuestionItem({ question, onQuestionSelect }: NestedQuestio
     setShowSubMenu(false);
   };
 
-  // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
-      if (hoverTimeoutRef.current) {
-        clearTimeout(hoverTimeoutRef.current);
-      }
+      if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
     };
   }, []);
 

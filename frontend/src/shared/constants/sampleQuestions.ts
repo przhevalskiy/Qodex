@@ -1,76 +1,49 @@
-import { SampleQuestion } from '../types/sampleQuestions';
+import { SampleQuestion } from '@/shared/types/sampleQuestions';
 
-// Sample questions organized by intent — each main entry maps to a specific
-// response mode, and sub-questions are ready-to-send example prompts.
-export const SAMPLE_QUESTIONS: SampleQuestion[] = [
+export const TRACK_STARTERS: SampleQuestion[] = [
   {
-    // → Explainer intent
-    main: "Explain a concept in plain terms",
+    main: 'Press release',
     subQuestions: [
-      { text: "Explain carbon pricing mechanisms in simple terms" },
-      { text: "Break down how project finance works for renewable energy" },
-      { text: "What is additionality and why does it matter for carbon credits?" },
-      { text: "Simplify scope 1, 2, and 3 emissions for a non-technical audience" }
-    ]
+      { text: 'I need help with a press release for an upcoming product launch' },
+      { text: 'We have a major partnership announcement and need a press release' },
+      { text: 'Draft a press release for an executive appointment or leadership change' },
+      { text: 'We need a press release for a funding or investment announcement' },
+    ],
   },
   {
-    // → Summary intent
-    main: "Summarize & synthesize my sources",
+    main: 'Event communications',
     subQuestions: [
-      { text: "Summarize the key findings across my uploaded documents" },
-      { text: "What are the main themes in my syllabi?" },
-      { text: "Give me a high-level overview of climate adaptation frameworks in my sources" },
-      { text: "What gaps exist in my current course materials?" }
-    ]
+      { text: 'We have a conference coming up and need full communications support' },
+      { text: 'Help me write event invitation copy and email outreach' },
+      { text: 'We\'re hosting a webinar and need talking points and social copy' },
+      { text: 'I need a post-event recap and media summary' },
+    ],
   },
   {
-    // → Case Analysis intent
-    main: "Show me a real-world case study",
+    main: 'Media & PR',
     subQuestions: [
-      { text: "Frame this document as a case study with stakeholders and outcomes" },
-      { text: "What are the key challenges in this renewable energy scenario?" },
-      { text: "Analyze how this climate policy was implemented in practice" },
-      { text: "What lessons can be drawn from this case for future projects?" }
-    ]
+      { text: 'Can you help me put together a PR pitch for a journalist?' },
+      { text: 'I need a media kit for an upcoming announcement' },
+      { text: 'Help me draft a spokesperson bio and boilerplate for a press kit' },
+      { text: 'We need talking points to prepare an executive for media interviews' },
+    ],
   },
   {
-    // → Assessment intent
-    main: "Generate assessment questions",
+    main: 'Thought leadership',
     subQuestions: [
-      { text: "Create Bloom's Taxonomy questions from my uploaded materials" },
-      { text: "Build a quiz on carbon markets and climate finance" },
-      { text: "Generate discussion questions for a graduate seminar" },
-      { text: "Design analytical essay prompts based on my course readings" }
-    ]
+      { text: 'I need help drafting an op-ed or thought leadership piece' },
+      { text: 'Help me outline a byline article for a trade publication' },
+      { text: 'I want to develop a speech or keynote remarks for an executive' },
+      { text: 'Draft a LinkedIn article on a topic relevant to our organization' },
+    ],
   },
   {
-    // → Lesson Plan intent
-    main: "Design a lesson plan or teaching resource",
+    main: 'General request',
     subQuestions: [
-      { text: "Create a lesson plan on climate adaptation for graduate students" },
-      { text: "Design classroom activities around carbon pricing mechanisms" },
-      { text: "Build a discussion guide for a renewable energy case" },
-      { text: "Suggest learning objectives and assessments for an ESG course module" }
-    ]
-  },
-  {
-    // → Critique intent
-    main: "Critique this research or argument",
-    subQuestions: [
-      { text: "What are the methodological strengths and weaknesses of this paper?" },
-      { text: "Identify gaps and biases in this climate policy analysis" },
-      { text: "What counterarguments exist to the claims in my sources?" },
-      { text: "How should a reader calibrate confidence in these findings?" }
-    ]
-  },
-  {
-    // → Builder intent
-    main: "Build a full document from scratch",
-    subQuestions: [
-      { text: "Build a full case study on renewable energy project finance modeled after my sources" },
-      { text: "Draft a complete syllabus for a graduate climate finance course" },
-      { text: "Write a policy proposal on carbon credit reform from scratch" },
-      { text: "Create a full report on ESG integration frameworks based on my documents" }
-    ]
+      { text: 'I have a general communications request for the marketing team' },
+      { text: 'We need help with internal communications for a company-wide announcement' },
+      { text: 'I need social media copy for a campaign or initiative' },
+      { text: 'Help me put together a briefing document for a stakeholder meeting' },
+    ],
   },
 ];

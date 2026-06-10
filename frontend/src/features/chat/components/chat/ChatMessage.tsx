@@ -2,21 +2,36 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import 'flowtoken/dist/styles.css';
-import { Copy, Check, Download, Loader2, RotateCcw } from 'lucide-react';
-import { RESEARCH_MODE_UI } from '@/features/research';
-import ExportDropdown from '../ui/ExportDropdown';
+import { Copy, Check, Loader2, RotateCcw } from 'lucide-react';
 import { getAvatarIcon } from '@/shared/constants/avatarIcons';
-import { Message, DocumentSource } from '@/shared/types';
-import { useState, useMemo, memo, useRef, useCallback } from 'react';
-import { createPortal } from 'react-dom';
+import { Message } from '@/shared/types';
+import { useState, useMemo, memo, useCallback } from 'react';
 import { useAuthStore } from '@/features/auth';
-import { SourcesDisplay } from '../sources/SourcesDisplay';
-import { SuggestedQuestions } from '../ui/SuggestedQuestions';
-import { InlineCitation } from '../input/InlineCitation';
-import { remarkCitations } from '@/shared/utils/remarkCitations';
+import { ChecklistMessage } from './ChecklistMessage';
+import chibis from '@/assets/chibis.png';
 import './ChatMessage.css';
 
-// Common emojis used as list markers
+// Map conversation intent → chibi sprite (col, row) in the 4×4 sheet
+const INTENT_CHIBI: Record<string, { col: number; row: number }> = {
+  research:     { col: 2, row: 2 }, // male with notepad
+  event:        { col: 1, row: 1 }, // energetic female
+  media:        { col: 0, row: 0 }, // female with tablet
+  social_media: { col: 3, row: 1 }, // social/creative
+  other:        { col: 2, row: 1 }, // professional male
+};
+
+function ChibiAvatar({ intent }: { intent?: string }) {
+  const { col, row } = INTENT_CHIBI[intent || 'other'] ?? INTENT_CHIBI.other;
+  const x = col === 0 ? '0%' : col === 3 ? '100%' : `${(col / 3) * 100}%`;
+  const y = row === 0 ? '0%' : row === 3 ? '100%' : `${(row / 3) * 100}%`;
+  return (
+    <div
+      className="chibi-msg-avatar"
+      style={{ backgroundImage: `url(${chibis})`, backgroundPosition: `${x} ${y}` }}
+    />
+  );
+}
+
 const listEmojis = [
   '✅', '❌', '✓', '✗', '•', '◦', '▪', '▫', '►', '▸',
   '🔥', '⚡', '🌿', '💡', '🎯', '🚀', '⭐', '🔴', '🟢', '🔵',
@@ -28,89 +43,23 @@ const listEmojis = [
   '📊', '📈', '📉', '🔑', '🔒', '🔓', '💪', '🤝', '👍', '👎'
 ];
 
-// Pre-compile regex patterns once at module load (not per render)
 const emojiPattern = listEmojis.map(e => e.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
 const emojiMatchRegex = new RegExp(`(${emojiPattern})\\s+[^${emojiPattern}]+`, 'g');
 const emojiSplitRegex = new RegExp(`(?=${emojiPattern}\\s)`, 'g');
 const listItemRegex = /^[-*+]\s/;
 const numberedListRegex = /^\d+\.\s/;
 const emojiListLineRegex = /^- [^\s]/;
-
-// Create a Set for O(1) emoji lookup instead of O(n) array iteration
 const emojiSet = new Set(listEmojis);
 
 function startsWithEmoji(text: string): boolean {
-  // Check first few characters (emojis can be 1-4 chars)
   for (let i = 1; i <= 4 && i <= text.length; i++) {
     if (emojiSet.has(text.slice(0, i))) return true;
   }
   return false;
 }
 
-
 function normalizeBulletPoints(content: string): string {
-  // Convert • and · bullet characters at line-start to proper markdown list markers
   return content.replace(/^[•·] /gm, '- ');
-}
-
-function normalizeSourceCitations(content: string): string {
-  // Mistral sometimes echoes the context header format "[Source N]" as prose
-  // (e.g. "Referenced in [Source 2]"). Convert to proper inline markers [N].
-  content = content.replace(/\[Source\s+(\d+)\]/gi, '[$1]');
-  // Mistral sometimes places [N][AI] on the same statement, violating the
-  // mutual-exclusivity rule. Convert [N][AI] → [AI:N] (source gave the concept,
-  // model extended it). Handles multiple source numbers: [1][2][AI] → [AI:1,2]
-  content = content.replace(
-    /((?:\[\d+\])+)\[AI\]/g,
-    (_match, nums) => {
-      const sources = [...nums.matchAll(/\[(\d+)\]/g)].map(m => m[1]).join(',');
-      return `[AI:${sources}]`;
-    }
-  );
-  // Citations must follow the text they label, never precede it.
-  // If a citation marker appears at the start of a line (before any text),
-  // move it to the end of that line, preserving trailing punctuation.
-  // e.g. "[AI:1,2] Some claim." → "Some claim. [AI:1,2]"
-  // e.g. "[AI:1,2] **Inference**: NYC's governance..." → "**Inference**: NYC's governance... [AI:1,2]"
-  content = content.replace(
-    /^(\[(?:AI(?::\d+(?:,\d+)*)?|\d+(?:,\d+)*)\])\s+(.+?)([.!?]?)$/gm,
-    (_match, citation, body, punct) => punct ? `${body} ${citation}${punct}` : `${body} ${citation}`
-  );
-  return content;
-}
-
-function splitInlineListFields(content: string): string {
-  // Mistral sometimes outputs bold metadata labels (**Authors**: ..., **Relevance**: ...)
-  // inline within a single list item instead of on separate lines.
-  // This splits them so each label starts on its own line.
-  const lines = content.split('\n');
-  const result: string[] = [];
-
-  for (const line of lines) {
-    const listMatch = line.match(/^(\s*(?:[-*+]|\d+\.)\s+)(.+)$/);
-    if (!listMatch) {
-      result.push(line);
-      continue;
-    }
-
-    const [, prefix, body] = listMatch;
-    const indent = ' '.repeat(prefix.length);
-
-    // Split on a bold capitalized label that appears after some content
-    // e.g. "Title [1] **Authors**: ..." → split before **Authors**
-    const parts = body.split(/(?<=\S)\s+(?=\*\*[A-Z][^*\n]*\*\*:)/);
-
-    if (parts.length <= 1) {
-      result.push(line);
-    } else {
-      result.push(prefix + parts[0]);
-      for (let i = 1; i < parts.length; i++) {
-        result.push(indent + parts[i]);
-      }
-    }
-  }
-
-  return result.join('\n');
 }
 
 function processEmojiLists(content: string): string {
@@ -119,8 +68,6 @@ function processEmojiLists(content: string): string {
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-
-    // Reset regex lastIndex for global regex reuse
     emojiMatchRegex.lastIndex = 0;
     const emojiMatches = line.match(emojiMatchRegex);
 
@@ -145,7 +92,7 @@ function processEmojiLists(content: string): string {
         const prevLine = processedLines[processedLines.length - 1];
         const prevIsEmojiList = prevLine && emojiListLineRegex.test(prevLine);
 
-        if (prevIsEmojiList || (i > 0 && startsWithEmoji(lines[i-1].trim()))) {
+        if (prevIsEmojiList || (i > 0 && startsWithEmoji(lines[i - 1].trim()))) {
           processedLines.push(`- ${trimmedLine}`);
         } else {
           processedLines.push(line);
@@ -164,51 +111,17 @@ interface ChatMessageProps {
   isStreaming?: boolean;
   onRetry?: (content: string) => void;
   onQuestionClick?: (question: string) => void;
-  onContinue?: () => void;
+  onSend?: (msg: string) => void;
 }
 
 const intentLabels: Record<string, string> = {
-  generalist: 'Generalist',
-  summarize: 'Summary',
-  explain: 'Explainer',
-  compare: 'Comparison',
-  builder: 'Builder',
-  generate_questions: 'Assessment',
-  critique: 'Critique',
-  methodology: 'Methodology',
-  lesson_plan: 'Lesson Plan',
-  find_readings: 'Reading List',
+  research:     'Research',
+  event:        'Event',
+  media:        'Media',
+  social_media: 'Social Media',
+  other:        'General',
 };
 
-const intentDescriptions: Record<string, string> = {
-  generalist: 'Grounded in retrieved sources with inline citations. Adapts structure and depth to the complexity of the question.',
-  summarize: 'Extracts key findings, methodology, and implications directly from retrieved sources. Minimal inference.',
-  explain: 'Simplifies retrieved content using definitions and analogies. May elaborate beyond direct source text to aid understanding — treat as a guided interpretation, not a verbatim quote.',
-  compare: 'Analyzes retrieved sources across defined dimensions. Evidence-backed synthesis with balanced presentation of each side.',
-  builder: 'Full documents from scratch — case studies, syllabi, reports, and proposals.',
-  generate_questions: 'Creates assessment questions directly from retrieved source content across Bloom\'s Taxonomy levels.',
-  critique: 'Balanced critical analysis of retrieved content — strengths, gaps, methodological concerns, and alternative perspectives.',
-  methodology: 'Reviews research design, data sources, and analytical approach from retrieved materials. Distinguishes retrieved facts from interpretation.',
-  lesson_plan: 'Designs teaching resources synthesised from retrieved syllabi content. Targets graduate-level audience unless otherwise specified.',
-  find_readings: 'Surfaces required and supplementary readings directly from retrieved syllabi. Does not fabricate titles or authors.',
-};
-
-
-const allIntents = [
-  { key: 'generalist', label: 'Generalist', desc: 'Cited answers, adaptive depth' },
-  { key: 'summarize', label: 'Summary', desc: 'Key findings, minimal inference' },
-  { key: 'explain', label: 'Explainer', desc: 'Concepts broken down simply' },
-  { key: 'compare', label: 'Comparison', desc: 'Evidence-based, side-by-side' },
-  { key: 'builder', label: 'Builder', desc: 'Full documents from scratch' },
-  { key: 'generate_questions', label: 'Assessment', desc: 'Quiz & exam from source content' },
-  { key: 'critique', label: 'Critique', desc: 'Strengths & gaps analysis' },
-  { key: 'methodology', label: 'Methodology', desc: 'Research design from sources' },
-  { key: 'lesson_plan', label: 'Lesson Plan', desc: 'Teaching resources from syllabi' },
-  { key: 'find_readings', label: 'Reading List', desc: 'Readings & materials from sources' },
-];
-
-
-// Pre-define markdown components outside component to avoid recreation
 const markdownComponents = {
   code({ className, children, ...props }: { className?: string; children?: React.ReactNode }) {
     const isInline = !className;
@@ -221,167 +134,43 @@ const markdownComponents = {
       </pre>
     );
   },
-  p({ children }: { children?: React.ReactNode }) {
-    return <p>{children}</p>;
-  },
-  ul({ children }: { children?: React.ReactNode }) {
-    return <ul>{children}</ul>;
-  },
-  ol({ children }: { children?: React.ReactNode }) {
-    return <ol>{children}</ol>;
-  },
-  li({ children }: { children?: React.ReactNode }) {
-    return <li>{children}</li>;
-  },
+  p({ children }: { children?: React.ReactNode }) { return <p>{children}</p>; },
+  ul({ children }: { children?: React.ReactNode }) { return <ul>{children}</ul>; },
+  ol({ children }: { children?: React.ReactNode }) { return <ol>{children}</ol>; },
+  li({ children }: { children?: React.ReactNode }) { return <li>{children}</li>; },
   a({ href, children }: { href?: string; children?: React.ReactNode }) {
-    return (
-      <a href={href} target="_blank" rel="noopener noreferrer">
-        {children}
-      </a>
-    );
+    return <a href={href} target="_blank" rel="noopener noreferrer">{children}</a>;
   },
   table({ children }: { children?: React.ReactNode }) {
     return <table className="markdown-table">{children}</table>;
   },
-  thead({ children }: { children?: React.ReactNode }) {
-    return <thead>{children}</thead>;
-  },
-  tbody({ children }: { children?: React.ReactNode }) {
-    return <tbody>{children}</tbody>;
-  },
-  tr({ children }: { children?: React.ReactNode }) {
-    return <tr>{children}</tr>;
-  },
-  th({ children }: { children?: React.ReactNode }) {
-    return <th>{children}</th>;
-  },
-  td({ children }: { children?: React.ReactNode }) {
-    return <td>{children}</td>;
-  },
-  hr() {
-    return <hr />;
-  },
-  h1({ children }: { children?: React.ReactNode }) {
-    return <h1>{children}</h1>;
-  },
-  h2({ children }: { children?: React.ReactNode }) {
-    return <h2>{children}</h2>;
-  },
-  h3({ children }: { children?: React.ReactNode }) {
-    return <h3>{children}</h3>;
-  },
-  h4({ children }: { children?: React.ReactNode }) {
-    return <h4>{children}</h4>;
-  },
-  // Suppress numeric citations when no sources available; still render [AI] chips
-  citation({ ai }: { number?: number; ai?: string; aisources?: string }) {
-    if (ai) return <InlineCitation ai={true} />;
-    return null;
-  },
-  'ai-claim'({ attributed, children }: { attributed?: string; children?: React.ReactNode }) {
-    return (
-      <span className={`ai-claim-text${attributed === 'true' ? ' ai-claim-attributed' : ' ai-claim-general'}`}>
-        {children}
-      </span>
-    );
-  },
+  thead({ children }: { children?: React.ReactNode }) { return <thead>{children}</thead>; },
+  tbody({ children }: { children?: React.ReactNode }) { return <tbody>{children}</tbody>; },
+  tr({ children }: { children?: React.ReactNode }) { return <tr>{children}</tr>; },
+  th({ children }: { children?: React.ReactNode }) { return <th>{children}</th>; },
+  td({ children }: { children?: React.ReactNode }) { return <td>{children}</td>; },
+  hr() { return <hr />; },
+  h1({ children }: { children?: React.ReactNode }) { return <h1>{children}</h1>; },
+  h2({ children }: { children?: React.ReactNode }) { return <h2>{children}</h2>; },
+  h3({ children }: { children?: React.ReactNode }) { return <h3>{children}</h3>; },
+  h4({ children }: { children?: React.ReactNode }) { return <h4>{children}</h4>; },
 };
 
-const remarkPlugins = [remarkGfm, remarkBreaks, remarkCitations];
+const remarkPlugins = [remarkGfm, remarkBreaks];
 
-export const ChatMessage = memo(function ChatMessage({ message, isStreaming, onRetry, onQuestionClick, onContinue }: ChatMessageProps) {
+export const ChatMessage = memo(function ChatMessage({ message, isStreaming, onRetry, onQuestionClick, onSend }: ChatMessageProps) {
   const isUser = message.role === 'user';
   const displayName = useAuthStore((s) => s.user?.user_metadata?.display_name) || useAuthStore((s) => s.user?.email?.split('@')[0]) || 'You';
   const AvatarIcon = getAvatarIcon(useAuthStore((s) => s.user?.user_metadata?.avatar_icon));
   const [copied, setCopied] = useState(false);
   const [retrying, setRetrying] = useState(false);
-  const [showIntentTooltip, setShowIntentTooltip] = useState(false);
-  const [intentTooltipStyle, setIntentTooltipStyle] = useState<React.CSSProperties>({});
-  const intentChipRef = useRef<HTMLSpanElement>(null);
-  const [showResearchTooltip, setShowResearchTooltip] = useState(false);
-  const [researchTooltipStyle, setResearchTooltipStyle] = useState<React.CSSProperties>({});
-  const researchChipRef = useRef<HTMLSpanElement>(null);
 
-  const handleIntentMouseEnter = useCallback(() => {
-    if (!intentChipRef.current) return;
-    const rect = intentChipRef.current.getBoundingClientRect();
-    const TOOLTIP_ESTIMATED_HEIGHT = 420;
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const showAbove = spaceBelow < TOOLTIP_ESTIMATED_HEIGHT + 12;
-    setIntentTooltipStyle(showAbove ? {
-      position: 'fixed',
-      bottom: window.innerHeight - rect.top + 8,
-      left: rect.left,
-      zIndex: 9999,
-    } : {
-      position: 'fixed',
-      top: rect.bottom + 8,
-      left: rect.left,
-      zIndex: 9999,
-    });
-    setShowIntentTooltip(true);
-  }, []);
+  const isChecklist = !isUser && message.content.startsWith('__checklist__');
 
-  const handleIntentMouseLeave = useCallback(() => {
-    setShowIntentTooltip(false);
-  }, []);
-
-  const handleResearchMouseEnter = useCallback(() => {
-    if (!researchChipRef.current) return;
-    const rect = researchChipRef.current.getBoundingClientRect();
-    const TOOLTIP_ESTIMATED_HEIGHT = 180;
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const showAbove = spaceBelow < TOOLTIP_ESTIMATED_HEIGHT + 12;
-    setResearchTooltipStyle(showAbove ? {
-      position: 'fixed',
-      bottom: window.innerHeight - rect.top + 8,
-      left: rect.left,
-      zIndex: 9999,
-    } : {
-      position: 'fixed',
-      top: rect.bottom + 8,
-      left: rect.left,
-      zIndex: 9999,
-    });
-    setShowResearchTooltip(true);
-  }, []);
-
-  const handleResearchMouseLeave = useCallback(() => {
-    setShowResearchTooltip(false);
-  }, []);
-
-  // Skip expensive emoji processing during streaming — AnimatedMarkdown uses raw content
   const processedContent = useMemo(
-    () => isStreaming ? '' : processEmojiLists(splitInlineListFields(normalizeSourceCitations(normalizeBulletPoints(message.content)))),
-    [message.content, isStreaming]
+    () => (isStreaming || isChecklist) ? '' : processEmojiLists(normalizeBulletPoints(message.content)),
+    [message.content, isStreaming, isChecklist]
   );
-
-  // Create custom markdown components with citation support
-  const markdownComponentsWithCitations = useMemo(() => {
-    if (!message.sources || message.sources.length === 0) {
-      return markdownComponents;
-    }
-
-    // Return components with custom citation handler
-    return {
-      ...markdownComponents,
-      citation({ number, ai, aisources }: { number?: number; ai?: string; aisources?: string }) {
-        if (ai) {
-          const nums = aisources ? aisources.split(',').map(n => parseInt(n.trim(), 10)).filter(Boolean) : [];
-          const resolved = nums.map(n => message.sources?.find(s => s.citation_number === n)).filter(Boolean) as DocumentSource[];
-          return <InlineCitation ai={true} resolvedAiSources={resolved} />;
-        }
-        const source = message.sources?.find(s => s.citation_number === number);
-        if (!source) return null; // suppress hallucinated citation numbers
-        return (
-          <InlineCitation
-            number={number}
-            source={source}
-          />
-        );
-      },
-    };
-  }, [message.sources]);
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(message.content);
@@ -389,8 +178,7 @@ export const ChatMessage = memo(function ChatMessage({ message, isStreaming, onR
     setTimeout(() => setCopied(false), 2000);
   };
 
-
-  const handleRetry = async () => {
+  const handleRetry = useCallback(async () => {
     if (retrying || !onRetry) return;
     setRetrying(true);
     try {
@@ -398,89 +186,22 @@ export const ChatMessage = memo(function ChatMessage({ message, isStreaming, onR
     } finally {
       setRetrying(false);
     }
-  };
+  }, [retrying, onRetry, message.content]);
 
   return (
     <div className={`chat-message ${isUser ? 'user' : 'assistant'}`}>
       <div className={`message-avatar ${isUser ? 'user' : 'assistant'}`}>
-        {isUser ? <AvatarIcon size={16} /> : <img src="/qodex-logo.png" alt="Qodex" className="assistant-logo" />}
+        {isUser ? <AvatarIcon size={16} /> : <ChibiAvatar intent={message.intent} />}
       </div>
 
       <div className="message-content">
         <div className="message-header">
-          <span className="message-author">{isUser ? displayName : 'Qodex'}</span>
-          {!isUser && message.intent && (
-            <span
-              ref={intentChipRef}
-              className="intent-chip-wrapper"
-              onMouseEnter={handleIntentMouseEnter}
-              onMouseLeave={handleIntentMouseLeave}
-            >
-              <span className={`message-intent ${message.intent}`}>
-                {intentLabels[message.intent] || message.intent}
-              </span>
-              {message.is_continuation && (
-                <span className="message-intent continuation">
-                  Continuing Response
-                </span>
-              )}
-              {showIntentTooltip && createPortal(
-                <div className="intent-tooltip intent-tooltip-visible" style={intentTooltipStyle}>
-                  <div className="intent-tooltip-header">
-                    <span className={`intent-tooltip-active ${message.intent}`}>
-                      {intentLabels[message.intent] || message.intent}
-                    </span>
-                    <span className="intent-tooltip-desc">
-                      {intentDescriptions[message.intent] || ''}
-                    </span>
-                  </div>
-                  <div className="intent-tooltip-divider" />
-                  <div className="intent-tooltip-label">All response modes</div>
-                  <div className="intent-tooltip-list">
-                    {allIntents.map((item) => (
-                      <div
-                        key={item.key}
-                        className={`intent-tooltip-item ${item.key === message.intent ? 'active' : ''}`}
-                      >
-                        <span className="intent-tooltip-item-indicator">
-                          {item.key === message.intent
-                            ? <Check size={11} strokeWidth={2.5} />
-                            : <span className="intent-tooltip-item-dash">—</span>
-                          }
-                        </span>
-                        <span className="intent-tooltip-item-label">{item.label}</span>
-                        <span className="intent-tooltip-item-desc">{item.desc}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>,
-                document.body
-              )}
+          <span className="message-author">{isUser ? displayName : 'Cowork'}</span>
+          {!isUser && message.intent && intentLabels[message.intent] && (
+            <span className={`message-intent ${message.intent}`}>
+              {intentLabels[message.intent]}
             </span>
           )}
-          {!isUser && message.research_mode && RESEARCH_MODE_UI[message.research_mode] && (() => {
-            const ui = RESEARCH_MODE_UI[message.research_mode!];
-            const Icon = ui.icon;
-            return (
-              <span
-                ref={researchChipRef}
-                className="research-chip-wrapper"
-                onMouseEnter={handleResearchMouseEnter}
-                onMouseLeave={handleResearchMouseLeave}
-              >
-                <span className="message-research-chip">
-                  <Icon size={14} />
-                </span>
-                {showResearchTooltip && createPortal(
-                  <div className="research-chip-tooltip" style={researchTooltipStyle}>
-                    <span className="research-chip-tooltip-label"><Icon size={12} />{ui.label}</span>
-                    <span className="research-chip-tooltip-desc">{ui.description}</span>
-                  </div>,
-                  document.body
-                )}
-              </span>
-            );
-          })()}
           {message.response_time_ms && (
             <span className="message-time">
               {(message.response_time_ms / 1000).toFixed(1)}s
@@ -489,23 +210,11 @@ export const ChatMessage = memo(function ChatMessage({ message, isStreaming, onR
           {!isStreaming && (
             <>
               {!isUser && onRetry && (
-                <button className="message-retry" onClick={handleRetry} title="Retry question" disabled={retrying}>
+                <button className="message-retry" onClick={handleRetry} title="Retry" disabled={retrying}>
                   {retrying ? <Loader2 size={14} className="spinning" /> : <RotateCcw size={14} />}
                 </button>
               )}
-              <ExportDropdown
-                mode="message"
-                content={message.content}
-                provider={message.provider}
-                timestamp={message.timestamp}
-              >
-                {(_open, toggle) => (
-                  <button className="message-export" onClick={toggle} title="Download message">
-                    <Download size={14} />
-                  </button>
-                )}
-              </ExportDropdown>
-              <button className="message-copy" onClick={handleCopy} title="Copy message">
+              <button className="message-copy" onClick={handleCopy} title="Copy">
                 {copied ? <Check size={14} /> : <Copy size={14} />}
               </button>
             </>
@@ -513,34 +222,17 @@ export const ChatMessage = memo(function ChatMessage({ message, isStreaming, onR
         </div>
 
         <div className={`message-body ${isStreaming ? 'streaming' : ''}`}>
-          <ReactMarkdown
-            remarkPlugins={remarkPlugins}
-            components={markdownComponentsWithCitations}
-          >
-            {isStreaming ? message.content : processedContent}
-          </ReactMarkdown>
-
-          {/* Continue chip — appears right after truncated output, before sources */}
-          {!isUser && !isStreaming && message.is_truncated && onContinue && (
-            <button className="continue-chip" onClick={onContinue}>
-              Continue On →
-            </button>
-          )}
-
-          {/* Show source documents for assistant messages */}
-          {!isUser && message.sources && message.sources.length > 0 && (
-            <SourcesDisplay sources={message.sources} />
-          )}
-
-          {/* Show suggested questions for assistant messages — suppressed when response was truncated */}
-          {!isUser && !message.is_truncated && message.suggested_questions && message.suggested_questions.length > 0 && onQuestionClick && (
-            <SuggestedQuestions
-              questions={message.suggested_questions}
-              onQuestionClick={onQuestionClick}
-              isLoading={isStreaming}
+          {isChecklist ? (
+            <ChecklistMessage
+              content={message.content}
+              onConfirm={msg => onSend?.(msg)}
+              onEdit={msg => onSend?.(msg)}
             />
+          ) : (
+            <ReactMarkdown remarkPlugins={remarkPlugins} components={markdownComponents}>
+              {isStreaming ? message.content : processedContent}
+            </ReactMarkdown>
           )}
-
         </div>
       </div>
     </div>

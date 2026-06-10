@@ -49,6 +49,14 @@
   object-fit: contain;
 }
 
+.chibi-msg-avatar {
+  width: 100%;
+  height: 100%;
+  background-size: 400% 400%;
+  background-repeat: no-repeat;
+  background-color: var(--gray-50);
+}
+
 /* Message Content */
 .message-content {
   flex: 1;

@@ -17,7 +17,7 @@ export function SampleQuestionsDropdown({
   onToggle,
   onQuestionSelect,
   questions,
-  isCollapsed
+  isCollapsed,
 }: SampleQuestionsDropdownProps) {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({});
@@ -25,21 +25,10 @@ export function SampleQuestionsDropdown({
   useEffect(() => {
     if (isOpen && buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
-
       if (isCollapsed) {
-        // When collapsed, show menu to the right of the sparkle button
-        setMenuStyle({
-          top: `${rect.top}px`,
-          left: `${rect.right + 8}px`,
-          width: '300px',
-        });
+        setMenuStyle({ top: `${rect.top}px`, left: `${rect.right + 8}px`, width: '300px' });
       } else {
-        // Normal state - extend slightly beyond sidebar width for readability
-        setMenuStyle({
-          top: `${rect.bottom + 4}px`,
-          left: '12px',
-          width: '300px',
-        });
+        setMenuStyle({ top: `${rect.bottom + 4}px`, left: '12px', width: '300px' });
       }
     }
   }, [isOpen, isCollapsed]);
@@ -49,16 +38,10 @@ export function SampleQuestionsDropdown({
       <button
         ref={buttonRef}
         className={`sample-questions-dropdown-toggle${isCollapsed ? ' no-margin' : ''}`}
-        onClick={(e) => {
-          e.stopPropagation();
-          onToggle();
-        }}
-        aria-label="Sample questions"
+        onClick={(e) => { e.stopPropagation(); onToggle(); }}
+        aria-label="Starter prompts"
       >
-        <ListFilterPlus
-          size={16}
-          className="sample-questions-chevron"
-        />
+        <ListFilterPlus size={16} className="sample-questions-chevron" />
       </button>
 
       {isOpen && (
