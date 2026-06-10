@@ -147,6 +147,10 @@
   padding: 32px;
 }
 
+.sidebar.collapsed .sidebar-loading {
+  display: none;
+}
+
 .spinner {
   width: 24px;
   height: 24px;
@@ -196,10 +200,22 @@
   text-align: center;
 }
 
+@keyframes sidebar-icon-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .sidebar.collapsed .sidebar-journey-collapsed {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  animation: sidebar-icon-enter 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) 0.05s both;
 }
 
 .sidebar-collapsed-sparkle-btn {
@@ -378,7 +394,18 @@
 .sidebar.collapsed .conversation-item {
   justify-content: center;
   padding: 10px;
+  animation: sidebar-icon-enter 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
+
+.sidebar.collapsed .conversation-item:nth-child(1)  { animation-delay: 0.08s; }
+.sidebar.collapsed .conversation-item:nth-child(2)  { animation-delay: 0.13s; }
+.sidebar.collapsed .conversation-item:nth-child(3)  { animation-delay: 0.18s; }
+.sidebar.collapsed .conversation-item:nth-child(4)  { animation-delay: 0.23s; }
+.sidebar.collapsed .conversation-item:nth-child(5)  { animation-delay: 0.28s; }
+.sidebar.collapsed .conversation-item:nth-child(6)  { animation-delay: 0.33s; }
+.sidebar.collapsed .conversation-item:nth-child(7)  { animation-delay: 0.38s; }
+.sidebar.collapsed .conversation-item:nth-child(8)  { animation-delay: 0.43s; }
+.sidebar.collapsed .conversation-item:nth-child(n+9) { animation-delay: 0.48s; }
 
 .conversation-item-title {
   flex: 1;
