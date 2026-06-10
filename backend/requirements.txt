@@ -26,6 +26,9 @@ tiktoken>=0.5.2
 supabase>=2.3.0
 PyJWT>=2.8.0
 
+# Email
+resend>=2.0.0
+
 # Utilities
 aiofiles>=23.2.1
 httpx>=0.26.0

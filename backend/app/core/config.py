@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     hive_workspace_id: str = ""
     hive_uat_project_id: str = ""
 
+    # Email
+    resend_api_key: str = ""
+    email_cc_address: str = ""
+
     # Application
     cors_origins: str = "http://localhost:5173,http://localhost:3000"
     debug: bool = True

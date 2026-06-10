@@ -17,6 +17,7 @@ from app.providers import get_claude_provider
 from app.services.attachment_service import build_attachment_context
 from app.services.discussion_service import get_discussion_service
 from app.services.hive_service import get_hive_service
+from app.services.email_service import send_submission_copy
 from app.services.intent_classifier import classify_intent, get_intent_for_key
 from app.utils.streaming import format_sse_event
 from app.auth import get_current_user, UserContext
@@ -170,6 +171,7 @@ async def stream_chat(
                         hive_task_id = str(result.get("id") or result.get("_id") or hive_task_id)
                     except Exception as hive_err:
                         logger.error(f"Hive API error: {hive_err}")
+                send_submission_copy(inp.get("fields", {}), hive_task_id)
                 yield f"data: {json.dumps({'type': 'submitted', 'hive_task_id': hive_task_id, 'message': 'Your request has been submitted to the marketing team.'})}\n\n"
 
         # Persist text-only assistant message — skip when a tool was called (tool events are the canonical message)
