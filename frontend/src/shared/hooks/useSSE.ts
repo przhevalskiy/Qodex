@@ -48,7 +48,11 @@ export function useSSE() {
           } else if (event.type === 'chunk') {
             appendToStream(event.content);
           } else if (event.type === 'error') {
-            appendToStream(event.error);
+            const isOverloaded = event.error?.type === 'overloaded_error' || event.error?.message?.includes('Overloaded');
+            const friendlyMsg = isOverloaded
+              ? "I'm a little overwhelmed right now — please try again in a moment."
+              : "Something went wrong. Please try again.";
+            appendToStream(friendlyMsg);
             finalizeStream(messageIdRef.current);
             return;
           } else if (event.type === 'checklist') {

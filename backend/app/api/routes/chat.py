@@ -13,7 +13,8 @@ from typing import Optional
 from app.core.config import get_settings
 from app.core.tools import COWORK_TOOLS
 from app.models import Message, MessageRole
-from app.providers import get_claude_provider
+import anthropic as anthropic_sdk
+from app.providers import get_claude_provider, get_mistral_provider
 from app.services.attachment_service import build_attachment_context
 from app.services.discussion_service import get_discussion_service
 from app.services.hive_service import get_hive_service
@@ -136,6 +137,7 @@ async def stream_chat(
 
         stream_metadata: dict = {}
 
+        active_provider = "claude"
         try:
             async for chunk in provider.stream_completion(
                 messages=context_messages,
@@ -149,9 +151,38 @@ async def stream_chat(
                 yield f"data: {json.dumps({'type': 'chunk', 'content': chunk, 'provider': 'claude'})}\n\n"
 
         except Exception as e:
-            logger.error(f"Stream error: {e}")
-            yield f"data: {json.dumps({'type': 'error', 'error': str(e), 'provider': 'claude'})}\n\n"
-            return
+            is_overloaded = (
+                isinstance(e, anthropic_sdk.APIStatusError) and e.status_code in (529, 529)
+                or "overloaded" in str(e).lower()
+            )
+            if is_overloaded and settings.mistral_api_key:
+                logger.warning("Claude overloaded — falling back to Mistral")
+                active_provider = "mistral"
+                full_response.clear()
+                stream_metadata.clear()
+                try:
+                    mistral = get_mistral_provider(
+                        api_key=settings.mistral_api_key,
+                        model=settings.mistral_model,
+                    )
+                    async for chunk in mistral.stream_completion(
+                        messages=context_messages,
+                        system_prompt=system_prompt,
+                        temperature=request.temperature,
+                        max_tokens=request.max_tokens,
+                        tools=COWORK_TOOLS,
+                        stream_metadata=stream_metadata,
+                    ):
+                        full_response.append(chunk)
+                        yield f"data: {json.dumps({'type': 'chunk', 'content': chunk, 'provider': 'mistral'})}\n\n"
+                except Exception as me:
+                    logger.error(f"Mistral fallback error: {me}")
+                    yield f"data: {json.dumps({'type': 'error', 'error': 'Service temporarily unavailable. Please try again.', 'provider': 'mistral'})}\n\n"
+                    return
+            else:
+                logger.error(f"Stream error: {e}")
+                yield f"data: {json.dumps({'type': 'error', 'error': 'Something went wrong. Please try again.', 'provider': 'claude'})}\n\n"
+                return
 
         # Intercept tool calls
         tool_calls = stream_metadata.get("tool_calls", [])
